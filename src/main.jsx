@@ -45,6 +45,48 @@ function createLeafPlacement(name, count) {
   };
 }
 
+function createTreeSlots(count) {
+  const columns = Math.min(18, Math.max(9, Math.ceil(Math.sqrt(Math.max(count, 1)) * 1.55)));
+  const rows = Math.max(1, Math.ceil(count / columns));
+  const slots = [];
+
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const normalizedX = columns === 1 ? 0 : column / (columns - 1);
+      const normalizedY = rows === 1 ? 0 : row / (rows - 1);
+      const centeredX = normalizedX * 2 - 1;
+      const centeredY = normalizedY * 2 - 1;
+      const crownLimit = 1 - Math.abs(centeredX) ** 2 * 0.72;
+      const lowerTaper = 0.34 + Math.sin(normalizedX * Math.PI) * 0.66;
+
+      if (centeredY < crownLimit && (normalizedY < 0.72 || Math.abs(centeredX) < lowerTaper)) {
+        const archLift = Math.sin(normalizedX * Math.PI) * 85;
+        const shoulderDrop = Math.abs(centeredX) * 88;
+        slots.push({
+          x: CANOPY_CENTER.x + centeredX * CANOPY_RADIUS.x,
+          y: 112 + normalizedY * 425 - archLift + shoulderDrop,
+        });
+      }
+    }
+  }
+
+  return slots.length ? slots : [CANOPY_CENTER];
+}
+
+function createTreePlacement(leafItem, index, total, salt = "") {
+  const slots = createTreeSlots(total);
+  const slotIndex = (index + hashText(`${leafItem.id || leafItem.name}-${salt}`)) % slots.length;
+  const slot = slots[slotIndex];
+  const jitterX = ((hashText(`${leafItem.id}-x-${salt}`) % 100) - 50) * 0.3;
+  const jitterY = ((hashText(`${leafItem.id}-y-${salt}`) % 100) - 50) * 0.2;
+
+  return {
+    x: Math.round(Math.min(1085, Math.max(135, slot.x + jitterX))),
+    y: Math.round(Math.min(525, Math.max(70, slot.y + jitterY))),
+    rotate: (hashText(`${leafItem.id}-${salt}`) % 70) - 35,
+  };
+}
+
 function useLeaves() {
   const [leaves, setLeaves] = useState([]);
   const [status, setStatus] = useState(firebaseReady ? "connecting" : "missing-config");
@@ -311,11 +353,12 @@ function AdminPage() {
 
     try {
       const updates = {};
+      const salt = String(Date.now());
       leaves.forEach((leafItem, index) => {
-        const placement = createLeafPlacement(leafItem.name || leafItem.id, index + Date.now());
+        const placement = createTreePlacement(leafItem, index, leaves.length, salt);
         updates[`leaves/${leafItem.id}/x`] = placement.x;
         updates[`leaves/${leafItem.id}/y`] = placement.y;
-        updates[`leaves/${leafItem.id}/color`] = placement.color;
+        updates[`leaves/${leafItem.id}/rotate`] = placement.rotate;
       });
       await update(ref(db), updates);
       setMessage("Leaves rearranged.");
@@ -417,43 +460,16 @@ function AdminPage() {
 }
 
 function arrangeLeaves(leaves) {
-  const columns = Math.min(18, Math.max(9, Math.ceil(Math.sqrt(Math.max(leaves.length, 1)) * 1.55)));
-  const rows = Math.max(1, Math.ceil(leaves.length / columns));
-  const slots = [];
-
-  for (let row = 0; row < rows; row += 1) {
-    for (let column = 0; column < columns; column += 1) {
-      const normalizedX = columns === 1 ? 0 : column / (columns - 1);
-      const normalizedY = rows === 1 ? 0 : row / (rows - 1);
-      const centeredX = normalizedX * 2 - 1;
-      const centeredY = normalizedY * 2 - 1;
-      const crownLimit = 1 - Math.abs(centeredX) ** 2 * 0.72;
-      const lowerTaper = 0.34 + Math.sin(normalizedX * Math.PI) * 0.66;
-
-      if (centeredY < crownLimit && (normalizedY < 0.72 || Math.abs(centeredX) < lowerTaper)) {
-        const archLift = Math.sin(normalizedX * Math.PI) * 85;
-        const shoulderDrop = Math.abs(centeredX) * 88;
-        slots.push({
-          x: CANOPY_CENTER.x + centeredX * CANOPY_RADIUS.x,
-          y: 112 + normalizedY * 425 - archLift + shoulderDrop,
-        });
-      }
-    }
-  }
-
   return leaves.map((leafItem, index) => {
-    const slot = slots[index % slots.length] || CANOPY_CENTER;
-    const wave = Math.floor(index / Math.max(slots.length, 1));
-    const jitterX = ((hashText(`${leafItem.id}-x`) % 100) - 50) * 0.3 + wave * 4;
-    const jitterY = ((hashText(`${leafItem.id}-y`) % 100) - 50) * 0.2 + wave * 5;
-    const x = slot.x + jitterX;
-    const y = slot.y + jitterY;
+    const fallback = createTreePlacement(leafItem, index, leaves.length);
+    const x = Number.isFinite(Number(leafItem.x)) ? Number(leafItem.x) : fallback.x;
+    const y = Number.isFinite(Number(leafItem.y)) ? Number(leafItem.y) : fallback.y;
 
     return {
       ...leafItem,
       x: Math.round(Math.min(1085, Math.max(135, x))),
       y: Math.round(Math.min(525, Math.max(70, y))),
-      rotate: (hashText(leafItem.id) % 70) - 35,
+      rotate: Number.isFinite(Number(leafItem.rotate)) ? Number(leafItem.rotate) : fallback.rotate,
     };
   });
 }
