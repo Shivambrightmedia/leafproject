@@ -3,13 +3,12 @@ import { createRoot } from "react-dom/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { Leaf, Send, Sparkles, Trees } from "lucide-react";
 import {
-  addDoc,
-  collection,
-  onSnapshot,
-  orderBy,
-  query,
+  onValue,
+  push,
+  ref,
   serverTimestamp,
-} from "firebase/firestore";
+  set,
+} from "firebase/database";
 import { db, firebaseReady } from "./services/firebase";
 import "./styles.css";
 
@@ -60,20 +59,24 @@ function useLeaves() {
     if (!firebaseReady) return undefined;
 
     try {
-      const leavesQuery = query(collection(db, "leaves"), orderBy("createdAt", "asc"));
-      return onSnapshot(
-        leavesQuery,
+      const leavesRef = ref(db, "leaves");
+      return onValue(
+        leavesRef,
         (snapshot) => {
-          setLeaves(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+          const data = snapshot.val() || {};
+          const nextLeaves = Object.entries(data)
+            .map(([id, leafItem]) => ({ id, ...leafItem }))
+            .sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+          setLeaves(nextLeaves);
           setStatus("connected");
         },
         (error) => {
-          console.error("Firestore listener failed:", error);
+          console.error("Realtime Database listener failed:", error);
           setStatus("error");
         },
       );
     } catch (error) {
-      console.error("Firestore setup failed:", error);
+      console.error("Realtime Database setup failed:", error);
       setStatus("error");
       return undefined;
     }
@@ -152,7 +155,8 @@ function SubmitPage() {
 
     try {
       const placement = createLeafPlacement(cleanName, leaves.length);
-      await addDoc(collection(db, "leaves"), {
+      const leafRef = push(ref(db, "leaves"));
+      await set(leafRef, {
         name: cleanName,
         createdAt: serverTimestamp(),
         ...placement,

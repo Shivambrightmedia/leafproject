@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -15,4 +15,4 @@ export const firebaseReady = Object.values(firebaseConfig).every(Boolean);
 
 const app = firebaseReady ? initializeApp(firebaseConfig) : null;
 
-export const db = app ? getFirestore(app) : null;
+export const db = app ? getDatabase(app) : null;
