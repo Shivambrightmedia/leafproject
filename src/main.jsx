@@ -16,8 +16,8 @@ const LEAF_COLORS = ["#2f8f46", "#74b84f", "#a7c957"];
 const TREE_WIDTH = 1200;
 const TREE_HEIGHT = 760;
 
-const CANOPY_CENTER = { x: 610, y: 270 };
-const CANOPY_RADIUS = { x: 500, y: 230 };
+const CANOPY_CENTER = { x: 610, y: 285 };
+const CANOPY_RADIUS = { x: 465, y: 255 };
 
 function seededRandom(seed) {
   let value = seed;
@@ -267,23 +267,42 @@ function DisplayPage() {
 }
 
 function arrangeLeaves(leaves) {
+  const columns = Math.min(18, Math.max(9, Math.ceil(Math.sqrt(Math.max(leaves.length, 1)) * 1.55)));
+  const rows = Math.max(1, Math.ceil(leaves.length / columns));
+  const slots = [];
+
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const normalizedX = columns === 1 ? 0 : column / (columns - 1);
+      const normalizedY = rows === 1 ? 0 : row / (rows - 1);
+      const centeredX = normalizedX * 2 - 1;
+      const centeredY = normalizedY * 2 - 1;
+      const crownLimit = 1 - Math.abs(centeredX) ** 2 * 0.72;
+      const lowerTaper = 0.34 + Math.sin(normalizedX * Math.PI) * 0.66;
+
+      if (centeredY < crownLimit && (normalizedY < 0.72 || Math.abs(centeredX) < lowerTaper)) {
+        const archLift = Math.sin(normalizedX * Math.PI) * 85;
+        const shoulderDrop = Math.abs(centeredX) * 88;
+        slots.push({
+          x: CANOPY_CENTER.x + centeredX * CANOPY_RADIUS.x,
+          y: 112 + normalizedY * 425 - archLift + shoulderDrop,
+        });
+      }
+    }
+  }
+
   return leaves.map((leafItem, index) => {
-    const columns = Math.min(16, Math.max(8, Math.ceil(Math.sqrt(Math.max(leaves.length, 1)) * 1.45)));
-    const row = Math.floor(index / columns);
-    const column = index % columns;
-    const rows = Math.max(1, Math.ceil(leaves.length / columns));
-    const normalizedX = columns === 1 ? 0 : column / (columns - 1);
-    const normalizedY = rows === 1 ? 0 : row / (rows - 1);
-    const canopyCurve = Math.sin(normalizedX * Math.PI);
-    const jitterX = ((hashText(`${leafItem.id}-x`) % 100) - 50) * 0.34;
-    const jitterY = ((hashText(`${leafItem.id}-y`) % 100) - 50) * 0.22;
-    const x = 130 + normalizedX * 960 + jitterX;
-    const y = 110 + normalizedY * 390 - canopyCurve * 82 + jitterY;
+    const slot = slots[index % slots.length] || CANOPY_CENTER;
+    const wave = Math.floor(index / Math.max(slots.length, 1));
+    const jitterX = ((hashText(`${leafItem.id}-x`) % 100) - 50) * 0.3 + wave * 4;
+    const jitterY = ((hashText(`${leafItem.id}-y`) % 100) - 50) * 0.2 + wave * 5;
+    const x = slot.x + jitterX;
+    const y = slot.y + jitterY;
 
     return {
       ...leafItem,
-      x: Math.round(Math.min(1090, Math.max(110, x))),
-      y: Math.round(Math.min(530, Math.max(75, y))),
+      x: Math.round(Math.min(1085, Math.max(135, x))),
+      y: Math.round(Math.min(525, Math.max(70, y))),
       rotate: (hashText(leafItem.id) % 70) - 35,
     };
   });
@@ -322,9 +341,9 @@ function TreeSvg() {
   return (
     <g>
       <ellipse cx="610" cy="710" rx="390" ry="34" fill="#29412e" opacity="0.13" />
-      <path d="M548,688 C592,560 578,445 608,318 C644,445 632,560 674,688 Z" fill="#f47a28" />
-      <path d="M596,334 C586,462 588,570 594,688" fill="none" stroke="#ffb05e" strokeWidth="16" strokeLinecap="round" opacity="0.5" />
-      <path d="M624,338 C636,466 636,570 626,686" fill="none" stroke="#cf5a1b" strokeWidth="12" strokeLinecap="round" opacity="0.38" />
+      <path d="M522,690 C574,560 570,438 604,328 C650,444 652,560 704,690 Z" fill="#f47a28" />
+      <path d="M604,328 C596,460 600,578 606,690" fill="none" stroke="#ffad5a" strokeWidth="18" strokeLinecap="round" opacity="0.42" />
+      <path d="M646,365 C660,482 664,584 654,688" fill="none" stroke="#d85b1b" strokeWidth="14" strokeLinecap="round" opacity="0.28" />
     </g>
   );
 }
