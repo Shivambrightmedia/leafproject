@@ -71,12 +71,12 @@ body {
 
 .leaf-name {
   pointer-events: none;
-  fill: #10281b;
-  font-size: 12px;
+  fill: #ffffff;
+  font-size: 10px;
   font-weight: 900;
   paint-order: stroke;
-  stroke: rgba(255, 255, 255, 0.7);
-  stroke-width: 3px;
+  stroke: rgba(15, 70, 37, 0.72);
+  stroke-width: 2.5px;
   stroke-linejoin: round;
 }
 

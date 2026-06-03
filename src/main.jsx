@@ -16,15 +16,8 @@ const LEAF_COLORS = ["#2f8f46", "#74b84f", "#a7c957"];
 const TREE_WIDTH = 1200;
 const TREE_HEIGHT = 760;
 
-const branchAnchors = [
-  { x: 300, y: 330 }, { x: 365, y: 280 }, { x: 430, y: 230 },
-  { x: 505, y: 190 }, { x: 585, y: 170 }, { x: 665, y: 185 },
-  { x: 745, y: 225 }, { x: 815, y: 275 }, { x: 880, y: 330 },
-  { x: 390, y: 385 }, { x: 500, y: 335 }, { x: 620, y: 315 },
-  { x: 740, y: 350 }, { x: 830, y: 410 }, { x: 275, y: 435 },
-  { x: 445, y: 455 }, { x: 610, y: 430 }, { x: 775, y: 470 },
-  { x: 920, y: 470 }, { x: 545, y: 250 }, { x: 675, y: 255 },
-];
+const CANOPY_CENTER = { x: 610, y: 245 };
+const CANOPY_RADIUS = { x: 420, y: 190 };
 
 function seededRandom(seed) {
   let value = seed;
@@ -40,13 +33,12 @@ function hashText(text) {
 
 function createLeafPlacement(name, count) {
   const random = seededRandom(hashText(`${name}-${Date.now()}-${count}`));
-  const anchor = branchAnchors[Math.floor(random() * branchAnchors.length)];
-  const radius = 18 + random() * 60;
   const angle = random() * Math.PI * 2;
+  const radius = Math.sqrt(random());
 
   return {
-    x: Math.round(Math.min(1010, Math.max(190, anchor.x + Math.cos(angle) * radius))),
-    y: Math.round(Math.min(520, Math.max(105, anchor.y + Math.sin(angle) * radius * 0.72))),
+    x: Math.round(CANOPY_CENTER.x + Math.cos(angle) * radius * CANOPY_RADIUS.x),
+    y: Math.round(CANOPY_CENTER.y + Math.sin(angle) * radius * CANOPY_RADIUS.y),
     color: LEAF_COLORS[Math.floor(random() * LEAF_COLORS.length)],
   };
 }
@@ -275,76 +267,91 @@ function DisplayPage() {
 }
 
 function arrangeLeaves(leaves) {
-  const placed = [];
-  const minDistance = leaves.length > 150 ? 34 : 44;
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
 
-  for (const leafItem of leaves) {
-    let x = leafItem.x || TREE_WIDTH / 2;
-    let y = leafItem.y || TREE_HEIGHT / 2;
-    let guard = 0;
+  return leaves.map((leafItem, index) => {
+    const ringProgress = Math.sqrt((index + 0.5) / Math.max(leaves.length, 1));
+    const angle = index * goldenAngle + (hashText(leafItem.id) % 21) / 10;
+    const wobble = ((hashText(`${leafItem.id}-wobble`) % 100) - 50) / 100;
+    const x = CANOPY_CENTER.x + Math.cos(angle) * ringProgress * CANOPY_RADIUS.x;
+    const y = CANOPY_CENTER.y + Math.sin(angle) * ringProgress * CANOPY_RADIUS.y + wobble * 22;
 
-    while (guard < 24 && placed.some((other) => Math.hypot(other.x - x, other.y - y) < minDistance)) {
-      const angle = (guard * 137.5 * Math.PI) / 180;
-      const distance = 12 + guard * 3.2;
-      x = Math.min(1040, Math.max(160, x + Math.cos(angle) * distance));
-      y = Math.min(535, Math.max(95, y + Math.sin(angle) * distance * 0.7));
-      guard += 1;
-    }
-    placed.push({ ...leafItem, x, y, rotate: ((hashText(leafItem.id) % 50) - 25) / 2 });
-  }
-
-  return placed;
+    return {
+      ...leafItem,
+      x: Math.round(Math.min(1030, Math.max(190, x))),
+      y: Math.round(Math.min(455, Math.max(70, y))),
+      rotate: (hashText(leafItem.id) % 70) - 35,
+    };
+  });
 }
 
 function WishLeaf({ leaf: leafItem, isNewest }) {
   return (
-    <motion.g
-      initial={{ opacity: 0, scale: 0 }}
-      animate={{ opacity: 1, scale: isNewest ? 1.16 : 1 }}
-      exit={{ opacity: 0, scale: 0 }}
-      transition={{ type: "spring", stiffness: 130, damping: 16 }}
-      transform={`translate(${leafItem.x} ${leafItem.y}) rotate(${leafItem.rotate})`}
-      style={{ transformOrigin: `${leafItem.x}px ${leafItem.y}px` }}
-    >
-      <motion.path
-        d="M0,-23 C27,-28 47,-8 45,14 C23,31 -9,28 -32,8 C-26,-10 -15,-20 0,-23 Z"
-        fill={leafItem.color || LEAF_COLORS[0]}
-        stroke="#173b27"
-        strokeOpacity="0.16"
-        strokeWidth="2"
-        animate={isNewest ? { filter: ["drop-shadow(0 0 0px #f3e572)", "drop-shadow(0 0 18px #f3e572)", "drop-shadow(0 0 0px #f3e572)"] } : {}}
-        transition={{ duration: 1.8, repeat: isNewest ? 2 : 0 }}
-      />
-      <path d="M-20,5 C-4,3 15,0 34,-10" fill="none" stroke="#173b27" strokeOpacity="0.24" strokeWidth="2" />
-      <text
-        x="4"
-        y="8"
-        textAnchor="middle"
-        className="leaf-name"
+    <g transform={`translate(${leafItem.x} ${leafItem.y}) rotate(${leafItem.rotate})`}>
+      <motion.g
+        initial={{ opacity: 0, scale: 0 }}
+        animate={{ opacity: 1, scale: isNewest ? 1.18 : 1 }}
+        exit={{ opacity: 0, scale: 0 }}
+        transition={{ type: "spring", stiffness: 130, damping: 16 }}
       >
-        {leafItem.name}
-      </text>
-    </motion.g>
+        <motion.path
+          d="M-7,-20 C18,-21 36,-5 42,16 C17,22 -8,17 -31,-2 C-25,-12 -17,-18 -7,-20 Z"
+          fill={leafItem.color || LEAF_COLORS[0]}
+          stroke="#0f5f2f"
+          strokeOpacity="0.22"
+          strokeWidth="2"
+          animate={isNewest ? { filter: ["drop-shadow(0 0 0px #f3e572)", "drop-shadow(0 0 18px #f3e572)", "drop-shadow(0 0 0px #f3e572)"] } : {}}
+          transition={{ duration: 1.8, repeat: isNewest ? 2 : 0 }}
+        />
+        <path d="M-23,-3 C-5,1 14,4 34,12" fill="none" stroke="#ffffff" strokeOpacity="0.34" strokeWidth="2" />
+        <text x="5" y="7" textAnchor="middle" className="leaf-name">
+          {leafItem.name}
+        </text>
+      </motion.g>
+    </g>
   );
 }
 
 function TreeSvg() {
   return (
     <g>
-      <ellipse cx="610" cy="710" rx="430" ry="38" fill="#29412e" opacity="0.13" />
-      <path d="M560,690 C590,570 575,430 602,305 C620,430 636,570 675,690 Z" fill="#6f4a2a" />
-      <path d="M604,318 C500,330 402,360 286,450" fill="none" stroke="#6f4a2a" strokeWidth="32" strokeLinecap="round" />
-      <path d="M608,306 C695,318 810,360 920,455" fill="none" stroke="#6f4a2a" strokeWidth="34" strokeLinecap="round" />
-      <path d="M600,265 C520,240 445,205 365,150" fill="none" stroke="#7b5430" strokeWidth="22" strokeLinecap="round" />
-      <path d="M613,255 C705,236 792,202 875,140" fill="none" stroke="#7b5430" strokeWidth="22" strokeLinecap="round" />
-      <path d="M590,360 C470,420 375,495 255,560" fill="none" stroke="#7b5430" strokeWidth="18" strokeLinecap="round" />
-      <path d="M625,365 C745,420 838,498 960,560" fill="none" stroke="#7b5430" strokeWidth="18" strokeLinecap="round" />
-      <path d="M603,250 C597,190 592,145 575,82" fill="none" stroke="#7b5430" strokeWidth="18" strokeLinecap="round" />
-      <path d="M415,190 C375,232 330,260 270,285" fill="none" stroke="#8a6239" strokeWidth="12" strokeLinecap="round" />
-      <path d="M780,190 C830,225 885,252 952,275" fill="none" stroke="#8a6239" strokeWidth="12" strokeLinecap="round" />
-      <path d="M482,388 C432,342 385,315 326,308" fill="none" stroke="#8a6239" strokeWidth="12" strokeLinecap="round" />
-      <path d="M744,390 C800,340 850,315 922,306" fill="none" stroke="#8a6239" strokeWidth="12" strokeLinecap="round" />
-      <path d="M585,684 C612,590 598,470 607,316" fill="none" stroke="#9a6c40" strokeWidth="18" strokeLinecap="round" opacity="0.58" />
+      <ellipse cx="610" cy="710" rx="390" ry="34" fill="#29412e" opacity="0.13" />
+      <path
+        d="M536,688 C590,570 562,448 607,315 C655,448 630,570 686,688 Z"
+        fill="#f47a28"
+      />
+      <path
+        d="M607,318 C572,390 556,486 572,682"
+        fill="none"
+        stroke="#fff8ec"
+        strokeWidth="18"
+        strokeLinecap="round"
+        opacity="0.92"
+      />
+      <path
+        d="M607,326 C657,405 673,516 650,676"
+        fill="none"
+        stroke="#fff8ec"
+        strokeWidth="16"
+        strokeLinecap="round"
+        opacity="0.9"
+      />
+      <path
+        d="M604,342 C536,408 496,494 482,596"
+        fill="none"
+        stroke="#fff8ec"
+        strokeWidth="14"
+        strokeLinecap="round"
+        opacity="0.88"
+      />
+      <path
+        d="M618,342 C690,408 735,500 750,600"
+        fill="none"
+        stroke="#fff8ec"
+        strokeWidth="14"
+        strokeLinecap="round"
+        opacity="0.88"
+      />
     </g>
   );
 }
