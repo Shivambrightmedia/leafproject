@@ -1,13 +1,15 @@
 import React, { Component, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { motion, AnimatePresence } from "framer-motion";
-import { Leaf, Send, Sparkles, Trees } from "lucide-react";
+import { Leaf, RefreshCw, Send, Sparkles, Trash2, Trees } from "lucide-react";
 import {
   onValue,
   push,
   ref,
+  remove,
   serverTimestamp,
   set,
+  update,
 } from "firebase/database";
 import { db, firebaseReady } from "./services/firebase";
 import "./styles.css";
@@ -114,6 +116,7 @@ class ErrorBoundary extends Component {
 
 function App() {
   const path = window.location.pathname;
+  if (path === "/admin") return <AdminPage />;
   if (path === "/display") return <DisplayPage />;
   return <SubmitPage />;
 }
@@ -262,6 +265,153 @@ function DisplayPage() {
           ))}
         </AnimatePresence>
       </svg>
+    </main>
+  );
+}
+
+function AdminPage() {
+  const { leaves, status } = useLeaves();
+  const [busyId, setBusyId] = useState("");
+  const [message, setMessage] = useState("");
+
+  async function deleteLeaf(id) {
+    if (!firebaseReady) return;
+    setBusyId(id);
+    setMessage("");
+
+    try {
+      await remove(ref(db, `leaves/${id}`));
+      setMessage("Leaf deleted.");
+    } catch {
+      setMessage("Could not delete leaf. Check database rules.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function deleteAllLeaves() {
+    if (!firebaseReady || !window.confirm("Delete all leaves?")) return;
+    setBusyId("all");
+    setMessage("");
+
+    try {
+      await remove(ref(db, "leaves"));
+      setMessage("All leaves deleted.");
+    } catch {
+      setMessage("Could not delete all leaves. Check database rules.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function rearrangeLeaves() {
+    if (!firebaseReady) return;
+    setBusyId("rearrange");
+    setMessage("");
+
+    try {
+      const updates = {};
+      leaves.forEach((leafItem, index) => {
+        const placement = createLeafPlacement(leafItem.name || leafItem.id, index + Date.now());
+        updates[`leaves/${leafItem.id}/x`] = placement.x;
+        updates[`leaves/${leafItem.id}/y`] = placement.y;
+        updates[`leaves/${leafItem.id}/color`] = placement.color;
+      });
+      await update(ref(db), updates);
+      setMessage("Leaves rearranged.");
+    } catch {
+      setMessage("Could not rearrange leaves. Check database rules.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-[#eef4e6] px-5 py-6 text-[#173b27]">
+      <section className="mx-auto w-full max-w-5xl">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-[#77834c]">
+              Digital Tree of Wishes
+            </p>
+            <h1 className="text-4xl font-black">Admin</h1>
+            <p className="mt-1 text-sm font-bold text-[#60704a]">
+              {status === "connected" ? `${leaves.length} leaves loaded` : "Connecting to database"}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={rearrangeLeaves}
+              disabled={!leaves.length || busyId === "rearrange"}
+              className="admin-button bg-[#173b27] text-white hover:bg-[#22583a]"
+            >
+              <RefreshCw size={18} />
+              {busyId === "rearrange" ? "Rearranging" : "Rearrange"}
+            </button>
+            <button
+              type="button"
+              onClick={deleteAllLeaves}
+              disabled={!leaves.length || busyId === "all"}
+              className="admin-button border border-[#c75a3a] bg-white text-[#9f2f1d] hover:bg-[#fff2ed]"
+            >
+              <Trash2 size={18} />
+              Delete All
+            </button>
+          </div>
+        </div>
+
+        {message && (
+          <div className="mb-4 rounded-md border border-[#c6d49f] bg-white px-4 py-3 text-sm font-bold">
+            {message}
+          </div>
+        )}
+
+        <div className="overflow-hidden rounded-lg border border-[#c6d49f] bg-white shadow-glow">
+          <div className="grid grid-cols-[1fr_110px_110px] gap-3 border-b border-[#dbe4c5] bg-[#f8fbf3] px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-[#60704a]">
+            <span>Name</span>
+            <span>Color</span>
+            <span className="text-right">Action</span>
+          </div>
+
+          {leaves.length === 0 ? (
+            <div className="px-4 py-12 text-center text-sm font-bold text-[#60704a]">
+              No leaves yet.
+            </div>
+          ) : (
+            <div className="max-h-[68vh] overflow-auto">
+              {leaves.map((leafItem) => (
+                <div
+                  key={leafItem.id}
+                  className="grid grid-cols-[1fr_110px_110px] items-center gap-3 border-b border-[#eef2df] px-4 py-3 last:border-b-0"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-black">{leafItem.name}</p>
+                    <p className="truncate text-xs font-semibold text-[#788467]">{leafItem.id}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="size-6 rounded-full border border-[#173b27]/20"
+                      style={{ backgroundColor: leafItem.color || LEAF_COLORS[0] }}
+                    />
+                    <span className="text-xs font-bold text-[#60704a]">{leafItem.color || "default"}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => deleteLeaf(leafItem.id)}
+                    disabled={busyId === leafItem.id}
+                    className="ml-auto grid size-10 place-items-center rounded-md border border-[#e4b3a3] text-[#9f2f1d] transition hover:bg-[#fff2ed] disabled:opacity-50"
+                    title={`Delete ${leafItem.name}`}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
     </main>
   );
 }
