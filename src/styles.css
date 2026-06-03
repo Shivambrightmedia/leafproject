@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: #f5f0e6;
+}
+
+.display-shell {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(221, 235, 210, 0.95) 0%, rgba(245, 240, 230, 0.98) 62%, #d6c8a7 100%);
+}
+
+.display-hud {
+  position: absolute;
+  z-index: 2;
+  top: 28px;
+  left: 34px;
+  right: 34px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  color: #173b27;
+}
+
+.newest-leaf {
+  display: flex;
+  min-width: 220px;
+  max-width: 420px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid rgba(23, 59, 39, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.68);
+  padding: 13px 18px;
+  font-size: clamp(16px, 2vw, 28px);
+  font-weight: 900;
+  box-shadow: 0 18px 60px rgba(31, 95, 64, 0.16);
+  backdrop-filter: blur(10px);
+}
+
+.newest-leaf span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-stage {
+  position: absolute;
+  inset: 5vh 2vw 0;
+  width: 96vw;
+  height: 95vh;
+}
+
+.leaf-name {
+  pointer-events: none;
+  fill: #10281b;
+  font-size: 12px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.7);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+@media (max-width: 680px) {
+  .display-hud {
+    top: 18px;
+    left: 16px;
+    right: 16px;
+    flex-direction: column;
+  }
+
+  .newest-leaf {
+    width: 100%;
+    max-width: none;
+  }
+
+  .tree-stage {
+    inset: 11vh -38vw 0;
+    width: 176vw;
+  }
+}
