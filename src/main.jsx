@@ -215,12 +215,7 @@ function SubmitPage() {
           <div className="grid size-12 place-items-center rounded-full bg-[#173b27] text-white shadow-glow">
             <Trees size={26} />
           </div>
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#5d6e35]">
-              Live Event
-            </p>
-            <h1 className="text-3xl font-black leading-tight">Digital Tree of Wishes</h1>
-          </div>
+          <h1 className="text-3xl font-black leading-tight">Trees</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="rounded-lg border border-[#d6c8a7] bg-white/78 p-5 shadow-glow backdrop-blur">
@@ -240,7 +235,7 @@ function SubmitPage() {
             autoComplete="name"
           />
           <div className="mt-2 flex justify-between text-xs font-semibold text-[#6f765f]">
-            <span>{error || (status === "connected" ? "Ready to grow a leaf." : "Connecting...")}</span>
+            <span>{error || (status === "connected" ? "Ready to grow a tree." : "Connecting...")}</span>
             <span>{name.trim().length}/20</span>
           </div>
           <button
@@ -249,7 +244,7 @@ function SubmitPage() {
             disabled={busy}
           >
             <Send size={19} />
-            {busy ? "Sending" : "Add My Leaf"}
+            {busy ? "Sending" : "Add My Tree"}
           </button>
         </form>
 
@@ -262,7 +257,7 @@ function SubmitPage() {
               className="mt-5 flex items-center gap-2 rounded-md bg-[#dce9b4] px-4 py-3 text-sm font-bold"
             >
               <Sparkles size={17} />
-              Your leaf is now on the tree.
+              Your tree is now live.
             </motion.div>
           )}
         </AnimatePresence>
@@ -290,7 +285,6 @@ function DisplayPage() {
     <main className="display-shell">
       <div className="display-hud">
         <div>
-          <p className="text-sm font-black uppercase tracking-[0.2em] text-[#77834c]">Digital Tree of Wishes</p>
           <h1 className="text-4xl font-black leading-none text-[#173b27]">{leaves.length} trees</h1>
         </div>
         <div className="newest-leaf">
