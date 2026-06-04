@@ -23,7 +23,7 @@ const CANOPY_RADIUS = { x: 465, y: 255 };
 const CANOPY_CLIP_ID = "wish-tree-canopy-clip";
 const DEFAULT_CANOPY_PATH = "M122,334 C145,188 292,93 475,92 C522,38 697,38 746,92 C928,94 1075,188 1098,334 C1117,455 1006,539 844,516 C770,575 452,575 376,516 C214,539 103,455 122,334 Z";
 const LEAF_SAFE_BOUNDS = { minX: 175, maxX: 1025, minY: 70, maxY: 525 };
-const LEAF_BORDER_PADDING = 62;
+const LEAF_BORDER_PADDING = 92;
 const LEAF_MIN_DISTANCE = 68;
 
 function seededRandom(seed) {
@@ -532,13 +532,11 @@ function DisplayPage() {
         onPointerLeave={finishDrawing}
       >
         <TreeSvg shapePoints={activeShape} showShapeGuide={drawingMode} />
-        <g clipPath={`url(#${CANOPY_CLIP_ID})`}>
-          <AnimatePresence>
-            {arrangedLeaves.map((leafItem) => (
-              <WishLeaf key={leafItem.id} leaf={leafItem} isNewest={leafItem.id === newestId} />
-            ))}
-          </AnimatePresence>
-        </g>
+        <AnimatePresence>
+          {arrangedLeaves.map((leafItem) => (
+            <WishLeaf key={leafItem.id} leaf={leafItem} isNewest={leafItem.id === newestId} />
+          ))}
+        </AnimatePresence>
       </svg>
     </main>
   );
