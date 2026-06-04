@@ -22,6 +22,7 @@ const CANOPY_CENTER = { x: 610, y: 285 };
 const CANOPY_RADIUS = { x: 465, y: 255 };
 const CANOPY_CLIP_ID = "wish-tree-canopy-clip";
 const DEFAULT_CANOPY_PATH = "M122,334 C145,188 292,93 475,92 C522,38 697,38 746,92 C928,94 1075,188 1098,334 C1117,455 1006,539 844,516 C770,575 452,575 376,516 C214,539 103,455 122,334 Z";
+const LEAF_SAFE_BOUNDS = { minX: 175, maxX: 1025, minY: 70, maxY: 525 };
 
 function seededRandom(seed) {
   let value = seed;
@@ -72,8 +73,20 @@ function createTreeSlots(count, shapePoints = []) {
 }
 
 function isInsideActiveShape(x, y, shapePoints = []) {
+  if (!isInsideLeafSafeArea(x, y)) return false;
   if (shapePoints.length > 2) return isPointInPolygon({ x, y }, shapePoints);
   return isInsideCanopyShape(x, y);
+}
+
+function isInsideLeafSafeArea(x, y) {
+  const insideBounds = x >= LEAF_SAFE_BOUNDS.minX
+    && x <= LEAF_SAFE_BOUNDS.maxX
+    && y >= LEAF_SAFE_BOUNDS.minY
+    && y <= LEAF_SAFE_BOUNDS.maxY;
+  const trunkBody = x > 500 && x < 720 && y > 315;
+  const trunkTop = ((x - 610) / 145) ** 2 + ((y - 360) / 92) ** 2 < 1;
+
+  return insideBounds && !trunkBody && !trunkTop;
 }
 
 function isInsideCanopyShape(x, y) {
@@ -116,10 +129,17 @@ function createTreePlacement(leafItem, index, total, salt = "", shapePoints = []
   const jitterY = ((hashText(`${leafItem.id}-y-${salt}`) % 100) - 50) * 0.2;
 
   return {
-    x: Math.round(Math.min(1085, Math.max(135, slot.x + jitterX))),
-    y: Math.round(Math.min(525, Math.max(70, slot.y + jitterY))),
+    x: Math.round(Math.min(LEAF_SAFE_BOUNDS.maxX, Math.max(LEAF_SAFE_BOUNDS.minX, slot.x + jitterX))),
+    y: Math.round(Math.min(LEAF_SAFE_BOUNDS.maxY, Math.max(LEAF_SAFE_BOUNDS.minY, slot.y + jitterY))),
     rotate: (hashText(`${leafItem.id}-${salt}`) % 70) - 35,
   };
+}
+
+function moveShapePoints(points, dx, dy) {
+  return points.map((point) => ({
+    x: Math.round(Math.min(1110, Math.max(90, point.x + dx))),
+    y: Math.round(Math.min(555, Math.max(45, point.y + dy))),
+  }));
 }
 
 function useLeaves() {
@@ -337,17 +357,34 @@ function DisplayPage() {
   }, [leaves]);
 
   useEffect(() => {
-    function handleKeyDown(event) {
+    async function handleKeyDown(event) {
       if (event.key === "5") {
         setDrawingMode((current) => !current);
         setDraftPoints([]);
         setIsDrawing(false);
+        return;
+      }
+
+      if (!drawingMode || !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+        return;
+      }
+
+      event.preventDefault();
+      const delta = event.shiftKey ? 28 : 12;
+      const dx = event.key === "ArrowLeft" ? -delta : event.key === "ArrowRight" ? delta : 0;
+      const dy = event.key === "ArrowUp" ? -delta : event.key === "ArrowDown" ? delta : 0;
+      const sourcePoints = draftPoints.length > 2 ? draftPoints : shapePoints;
+
+      if (sourcePoints.length > 2) {
+        const movedPoints = moveShapePoints(sourcePoints, dx, dy);
+        setDraftPoints(movedPoints);
+        if (firebaseReady) await set(ref(db, "settings/canopyShape"), movedPoints);
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [drawingMode, draftPoints, shapePoints]);
 
   function getSvgPoint(event) {
     const svg = event.currentTarget;
@@ -401,7 +438,7 @@ function DisplayPage() {
 
       {drawingMode && (
         <div className="draw-shape-hint">
-          Draw shape. Release to save. Press 5 to exit.
+          Draw shape. Release to save. Arrow keys move it. Press 5 to exit.
         </div>
       )}
 
@@ -585,8 +622,8 @@ function arrangeLeaves(leaves, shapePoints = []) {
 
     return {
       ...leafItem,
-      x: Math.round(Math.min(1085, Math.max(135, x))),
-      y: Math.round(Math.min(525, Math.max(70, y))),
+      x: Math.round(Math.min(LEAF_SAFE_BOUNDS.maxX, Math.max(LEAF_SAFE_BOUNDS.minX, x))),
+      y: Math.round(Math.min(LEAF_SAFE_BOUNDS.maxY, Math.max(LEAF_SAFE_BOUNDS.minY, y))),
       rotate: Number.isFinite(Number(leafItem.rotate)) ? Number(leafItem.rotate) : fallback.rotate,
     };
   });
