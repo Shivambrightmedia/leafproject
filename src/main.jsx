@@ -23,6 +23,8 @@ const CANOPY_RADIUS = { x: 465, y: 255 };
 const CANOPY_CLIP_ID = "wish-tree-canopy-clip";
 const DEFAULT_CANOPY_PATH = "M122,334 C145,188 292,93 475,92 C522,38 697,38 746,92 C928,94 1075,188 1098,334 C1117,455 1006,539 844,516 C770,575 452,575 376,516 C214,539 103,455 122,334 Z";
 const LEAF_SAFE_BOUNDS = { minX: 175, maxX: 1025, minY: 70, maxY: 525 };
+const LEAF_BORDER_PADDING = 38;
+const LEAF_MIN_DISTANCE = 58;
 
 function seededRandom(seed) {
   let value = seed;
@@ -49,8 +51,8 @@ function createLeafPlacement(name, count) {
 }
 
 function createTreeSlots(count, shapePoints = []) {
-  const columns = Math.min(20, Math.max(10, Math.ceil(Math.sqrt(Math.max(count, 1)) * 1.7)));
-  const rows = Math.max(1, Math.ceil(count / columns) + 2);
+  const columns = Math.min(34, Math.max(14, Math.ceil(Math.sqrt(Math.max(count, 1)) * 2.25)));
+  const rows = Math.max(1, Math.ceil(count / columns) + 9);
   const slots = [];
 
   for (let row = 0; row < rows; row += 1) {
@@ -60,7 +62,7 @@ function createTreeSlots(count, shapePoints = []) {
       const x = 120 + normalizedX * 980;
       const y = 75 + normalizedY * 460;
 
-      if (isInsideActiveShape(x, y, shapePoints)) {
+      if (isInsideActiveShape(x, y, shapePoints, LEAF_BORDER_PADDING)) {
         slots.push({
           x,
           y,
@@ -72,9 +74,9 @@ function createTreeSlots(count, shapePoints = []) {
   return slots.length ? slots : [CANOPY_CENTER];
 }
 
-function isInsideActiveShape(x, y, shapePoints = []) {
+function isInsideActiveShape(x, y, shapePoints = [], padding = 0) {
   if (!isInsideLeafSafeArea(x, y)) return false;
-  if (shapePoints.length > 2) return isPointInPolygon({ x, y }, shapePoints);
+  if (shapePoints.length > 2) return isPointSafelyInPolygon({ x, y }, shapePoints, padding);
   return isInsideCanopyShape(x, y);
 }
 
@@ -116,6 +118,38 @@ function isPointInPolygon(point, polygon) {
   return inside;
 }
 
+function distanceToSegment(point, a, b) {
+  const segmentX = b.x - a.x;
+  const segmentY = b.y - a.y;
+  const lengthSquared = segmentX * segmentX + segmentY * segmentY;
+  const rawT = lengthSquared === 0
+    ? 0
+    : ((point.x - a.x) * segmentX + (point.y - a.y) * segmentY) / lengthSquared;
+  const t = Math.min(1, Math.max(0, rawT));
+  const projection = {
+    x: a.x + t * segmentX,
+    y: a.y + t * segmentY,
+  };
+
+  return Math.hypot(point.x - projection.x, point.y - projection.y);
+}
+
+function distanceToPolygon(point, polygon) {
+  if (polygon.length < 2) return Infinity;
+
+  let minDistance = Infinity;
+  for (let index = 0; index < polygon.length; index += 1) {
+    const nextIndex = (index + 1) % polygon.length;
+    minDistance = Math.min(minDistance, distanceToSegment(point, polygon[index], polygon[nextIndex]));
+  }
+
+  return minDistance;
+}
+
+function isPointSafelyInPolygon(point, polygon, padding) {
+  return isPointInPolygon(point, polygon) && distanceToPolygon(point, polygon) >= padding;
+}
+
 function shapePointsToPath(points) {
   if (!points?.length) return DEFAULT_CANOPY_PATH;
   return `${points.map((point, index) => `${index === 0 ? "M" : "L"}${point.x},${point.y}`).join(" ")} Z`;
@@ -133,6 +167,48 @@ function createTreePlacement(leafItem, index, total, salt = "", shapePoints = []
     y: Math.round(Math.min(LEAF_SAFE_BOUNDS.maxY, Math.max(LEAF_SAFE_BOUNDS.minY, slot.y + jitterY))),
     rotate: (hashText(`${leafItem.id}-${salt}`) % 70) - 35,
   };
+}
+
+function createPackedPlacements(leaves, salt = "", shapePoints = []) {
+  const slots = createTreeSlots(leaves.length, shapePoints)
+    .map((slot, index) => ({
+      ...slot,
+      sort: hashText(`${slot.x}-${slot.y}-${salt}`) + index * 17,
+    }))
+    .sort((a, b) => a.sort - b.sort);
+  const used = [];
+
+  return leaves.map((leafItem, index) => {
+    const preferredIndex = hashText(`${leafItem.id || leafItem.name}-${salt}`) % Math.max(slots.length, 1);
+    let selected = null;
+
+    for (let attempt = 0; attempt < slots.length; attempt += 1) {
+      const slot = slots[(preferredIndex + attempt * 7) % slots.length];
+      const clear = used.every((point) => Math.hypot(point.x - slot.x, point.y - slot.y) >= LEAF_MIN_DISTANCE);
+
+      if (clear) {
+        selected = slot;
+        break;
+      }
+    }
+
+    if (!selected) {
+      selected = slots.find((slot) => used.every((point) => Math.hypot(point.x - slot.x, point.y - slot.y) >= LEAF_MIN_DISTANCE * 0.75))
+        || slots[index % slots.length]
+        || CANOPY_CENTER;
+    }
+
+    const jitterX = ((hashText(`${leafItem.id}-x-${salt}`) % 100) - 50) * 0.14;
+    const jitterY = ((hashText(`${leafItem.id}-y-${salt}`) % 100) - 50) * 0.1;
+    const placement = {
+      x: Math.round(Math.min(LEAF_SAFE_BOUNDS.maxX, Math.max(LEAF_SAFE_BOUNDS.minX, selected.x + jitterX))),
+      y: Math.round(Math.min(LEAF_SAFE_BOUNDS.maxY, Math.max(LEAF_SAFE_BOUNDS.minY, selected.y + jitterY))),
+      rotate: (hashText(`${leafItem.id}-${salt}`) % 70) - 35,
+    };
+
+    used.push(placement);
+    return placement;
+  });
 }
 
 function moveShapePoints(points, dx, dy) {
@@ -509,8 +585,9 @@ function AdminPage() {
     try {
       const updates = {};
       const salt = String(Date.now());
+      const placements = createPackedPlacements(leaves, salt, shapePoints);
       leaves.forEach((leafItem, index) => {
-        const placement = createTreePlacement(leafItem, index, leaves.length, salt, shapePoints);
+        const placement = placements[index];
         updates[`leaves/${leafItem.id}/x`] = placement.x;
         updates[`leaves/${leafItem.id}/y`] = placement.y;
         updates[`leaves/${leafItem.id}/rotate`] = placement.rotate;
@@ -615,8 +692,10 @@ function AdminPage() {
 }
 
 function arrangeLeaves(leaves, shapePoints = []) {
+  const fallbackPlacements = createPackedPlacements(leaves, "display-fallback", shapePoints);
+
   return leaves.map((leafItem, index) => {
-    const fallback = createTreePlacement(leafItem, index, leaves.length, "", shapePoints);
+    const fallback = fallbackPlacements[index] || createTreePlacement(leafItem, index, leaves.length, "", shapePoints);
     const x = Number.isFinite(Number(leafItem.x)) ? Number(leafItem.x) : fallback.x;
     const y = Number.isFinite(Number(leafItem.y)) ? Number(leafItem.y) : fallback.y;
 
