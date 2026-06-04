@@ -23,8 +23,8 @@ const CANOPY_RADIUS = { x: 465, y: 255 };
 const CANOPY_CLIP_ID = "wish-tree-canopy-clip";
 const DEFAULT_CANOPY_PATH = "M122,334 C145,188 292,93 475,92 C522,38 697,38 746,92 C928,94 1075,188 1098,334 C1117,455 1006,539 844,516 C770,575 452,575 376,516 C214,539 103,455 122,334 Z";
 const LEAF_SAFE_BOUNDS = { minX: 175, maxX: 1025, minY: 70, maxY: 525 };
-const LEAF_BORDER_PADDING = 38;
-const LEAF_MIN_DISTANCE = 58;
+const LEAF_BORDER_PADDING = 62;
+const LEAF_MIN_DISTANCE = 68;
 
 function seededRandom(seed) {
   let value = seed;
@@ -51,8 +51,8 @@ function createLeafPlacement(name, count) {
 }
 
 function createTreeSlots(count, shapePoints = []) {
-  const columns = Math.min(34, Math.max(14, Math.ceil(Math.sqrt(Math.max(count, 1)) * 2.25)));
-  const rows = Math.max(1, Math.ceil(count / columns) + 9);
+  const columns = Math.min(48, Math.max(18, Math.ceil(Math.sqrt(Math.max(count, 1)) * 3)));
+  const rows = Math.max(1, Math.ceil(count / columns) + 16);
   const slots = [];
 
   for (let row = 0; row < rows; row += 1) {
@@ -182,8 +182,8 @@ function createPackedPlacements(leaves, salt = "", shapePoints = []) {
     const preferredIndex = hashText(`${leafItem.id || leafItem.name}-${salt}`) % Math.max(slots.length, 1);
     let selected = null;
 
-    for (let attempt = 0; attempt < slots.length; attempt += 1) {
-      const slot = slots[(preferredIndex + attempt * 7) % slots.length];
+    for (let attempt = 0; attempt < slots.length * 3; attempt += 1) {
+      const slot = slots[(preferredIndex + attempt * 11) % slots.length];
       const clear = used.every((point) => Math.hypot(point.x - slot.x, point.y - slot.y) >= LEAF_MIN_DISTANCE);
 
       if (clear) {
@@ -193,9 +193,12 @@ function createPackedPlacements(leaves, salt = "", shapePoints = []) {
     }
 
     if (!selected) {
-      selected = slots.find((slot) => used.every((point) => Math.hypot(point.x - slot.x, point.y - slot.y) >= LEAF_MIN_DISTANCE * 0.75))
-        || slots[index % slots.length]
-        || CANOPY_CENTER;
+      const relaxedDistances = [0.9, 0.8, 0.7, 0.6];
+      for (const multiplier of relaxedDistances) {
+        selected = slots.find((slot) => used.every((point) => Math.hypot(point.x - slot.x, point.y - slot.y) >= LEAF_MIN_DISTANCE * multiplier));
+        if (selected) break;
+      }
+      selected = selected || slots[index % slots.length] || CANOPY_CENTER;
     }
 
     const jitterX = ((hashText(`${leafItem.id}-x-${salt}`) % 100) - 50) * 0.14;
