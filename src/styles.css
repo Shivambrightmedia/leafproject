@@ -126,6 +126,42 @@ body {
   opacity: 0.58;
 }
 
+.admin-field {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 900;
+  color: #60704a;
+}
+
+.admin-field select,
+.admin-field input[type="text"],
+.admin-field input:not([type]) {
+  min-height: 42px;
+  border: 1px solid #c6d49f;
+  border-radius: 6px;
+  background: #f8fbf3;
+  padding: 0 10px;
+  color: #173b27;
+  font-weight: 900;
+  outline: none;
+}
+
+.color-input-row {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 8px;
+}
+
+.color-input-row input[type="color"] {
+  width: 48px;
+  height: 42px;
+  border: 1px solid #c6d49f;
+  border-radius: 6px;
+  background: #f8fbf3;
+  padding: 4px;
+}
+
 @media (max-width: 680px) {
   .display-hud {
     top: 18px;

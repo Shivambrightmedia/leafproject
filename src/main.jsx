@@ -17,6 +17,12 @@ import "./styles.css";
 const LEAF_COLORS = ["#2f8f46", "#74b84f", "#a7c957"];
 const TREE_WIDTH = 1200;
 const TREE_HEIGHT = 760;
+const DEFAULT_VISUAL_SETTINGS = {
+  colorMode: "mix",
+  primaryColor: "#59f1ff",
+  secondaryColor: "#21c8d7",
+  accentColor: "#9ffbff",
+};
 
 const CANOPY_CENTER = { x: 610, y: 285 };
 const CANOPY_RADIUS = { x: 465, y: 255 };
@@ -24,7 +30,7 @@ const CANOPY_CLIP_ID = "wish-tree-canopy-clip";
 const DEFAULT_CANOPY_PATH = "M122,334 C145,188 292,93 475,92 C522,38 697,38 746,92 C928,94 1075,188 1098,334 C1117,455 1006,539 844,516 C770,575 452,575 376,516 C214,539 103,455 122,334 Z";
 const LEAF_SAFE_BOUNDS = { minX: 175, maxX: 1025, minY: 70, maxY: 525 };
 const LEAF_BORDER_PADDING = 120;
-const LEAF_MIN_DISTANCE = 74;
+const LEAF_MIN_DISTANCE = 80;
 
 function seededRandom(seed) {
   let value = seed;
@@ -36,6 +42,31 @@ function seededRandom(seed) {
 
 function hashText(text) {
   return [...text].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0, 7);
+}
+
+function hexToRgb(hex) {
+  const cleanHex = String(hex || "").replace("#", "");
+  const normalized = cleanHex.length === 3
+    ? cleanHex.split("").map((char) => `${char}${char}`).join("")
+    : cleanHex.padEnd(6, "0").slice(0, 6);
+  const value = Number.parseInt(normalized, 16);
+
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255,
+  };
+}
+
+function rgba(hex, alpha) {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function getNodeColor(settings, leafId) {
+  if (settings.colorMode === "single") return settings.primaryColor;
+  const palette = [settings.primaryColor, settings.secondaryColor, settings.accentColor].filter(Boolean);
+  return palette[hashText(leafId || "node") % palette.length] || DEFAULT_VISUAL_SETTINGS.primaryColor;
 }
 
 function createLeafPlacement(name, count) {
@@ -51,8 +82,8 @@ function createLeafPlacement(name, count) {
 }
 
 function createTreeSlots(count, shapePoints = []) {
-  const columns = Math.min(60, Math.max(22, Math.ceil(Math.sqrt(Math.max(count, 1)) * 3.7)));
-  const rows = Math.max(1, Math.ceil(count / columns) + 22);
+  const columns = Math.min(72, Math.max(26, Math.ceil(Math.sqrt(Math.max(count, 1)) * 4.4)));
+  const rows = Math.max(1, Math.ceil(count / columns) + 28);
   const slots = [];
 
   for (let row = 0; row < rows; row += 1) {
@@ -182,8 +213,8 @@ function createPackedPlacements(leaves, salt = "", shapePoints = []) {
     const preferredIndex = hashText(`${leafItem.id || leafItem.name}-${salt}`) % Math.max(slots.length, 1);
     let selected = null;
 
-    for (let attempt = 0; attempt < slots.length * 8; attempt += 1) {
-      const slot = slots[(preferredIndex + attempt * 17) % slots.length];
+    for (let attempt = 0; attempt < slots.length * 14; attempt += 1) {
+      const slot = slots[(preferredIndex + attempt * 19) % slots.length];
       const clear = used.every((point) => Math.hypot(point.x - slot.x, point.y - slot.y) >= LEAF_MIN_DISTANCE);
 
       if (clear) {
@@ -277,6 +308,23 @@ function useCanopyShape() {
   }, []);
 
   return shapePoints;
+}
+
+function useVisualSettings() {
+  const [visualSettings, setVisualSettings] = useState(DEFAULT_VISUAL_SETTINGS);
+
+  useEffect(() => {
+    if (!firebaseReady) return undefined;
+
+    return onValue(ref(db, "settings/visual"), (snapshot) => {
+      setVisualSettings({
+        ...DEFAULT_VISUAL_SETTINGS,
+        ...(snapshot.val() || {}),
+      });
+    });
+  }, []);
+
+  return visualSettings;
 }
 
 class ErrorBoundary extends Component {
@@ -427,6 +475,7 @@ function SubmitPage() {
 function DisplayPage() {
   const { leaves, status } = useLeaves();
   const shapePoints = useCanopyShape();
+  const visualSettings = useVisualSettings();
   const previousIds = useRef(new Set());
   const [newestId, setNewestId] = useState(null);
   const [drawingMode, setDrawingMode] = useState(false);
@@ -603,7 +652,12 @@ function DisplayPage() {
         onPointerUp={finishDrawing}
         onPointerLeave={finishDrawing}
       >
-        <DigitalTreeSvg nodes={arrangedLeaves} shapePoints={activeShape} showShapeGuide={drawingMode} />
+        <DigitalTreeSvg
+          nodes={arrangedLeaves}
+          shapePoints={activeShape}
+          showShapeGuide={drawingMode}
+          visualSettings={visualSettings}
+        />
         <AnimatePresence>
           {arrangedLeaves.map((leafItem) => (
             <WishLeaf
@@ -611,6 +665,7 @@ function DisplayPage() {
               leaf={leafItem}
               isNewest={leafItem.id === newestId}
               canDrag={drawingMode}
+              visualSettings={visualSettings}
               onPointerDown={(event) => startLeafDrag(event, leafItem)}
             />
           ))}
@@ -623,8 +678,14 @@ function DisplayPage() {
 function AdminPage() {
   const { leaves, status } = useLeaves();
   const shapePoints = useCanopyShape();
+  const visualSettings = useVisualSettings();
   const [busyId, setBusyId] = useState("");
   const [message, setMessage] = useState("");
+  const [draftVisualSettings, setDraftVisualSettings] = useState(DEFAULT_VISUAL_SETTINGS);
+
+  useEffect(() => {
+    setDraftVisualSettings(visualSettings);
+  }, [visualSettings]);
 
   async function deleteLeaf(id) {
     if (!firebaseReady) return;
@@ -680,6 +741,21 @@ function AdminPage() {
     }
   }
 
+  async function saveVisualSettings() {
+    if (!firebaseReady) return;
+    setBusyId("visual");
+    setMessage("");
+
+    try {
+      await set(ref(db, "settings/visual"), draftVisualSettings);
+      setMessage("Glow colors updated.");
+    } catch {
+      setMessage("Could not update colors. Check database rules.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#eef4e6] px-5 py-6 text-[#173b27]">
       <section className="mx-auto w-full max-w-5xl">
@@ -721,6 +797,57 @@ function AdminPage() {
             {message}
           </div>
         )}
+
+        <div className="mb-5 rounded-lg border border-[#c6d49f] bg-white p-4 shadow-glow">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-black">Glow Colors</h2>
+              <p className="text-sm font-bold text-[#60704a]">Use one color or mix three colors across leaves and branches.</p>
+            </div>
+            <button
+              type="button"
+              onClick={saveVisualSettings}
+              disabled={busyId === "visual"}
+              className="admin-button bg-[#173b27] text-white hover:bg-[#22583a]"
+            >
+              {busyId === "visual" ? "Saving" : "Save Colors"}
+            </button>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-[220px_1fr_1fr_1fr]">
+            <label className="admin-field">
+              <span>Mode</span>
+              <select
+                value={draftVisualSettings.colorMode}
+                onChange={(event) => setDraftVisualSettings((settings) => ({ ...settings, colorMode: event.target.value }))}
+              >
+                <option value="mix">Mixed colors</option>
+                <option value="single">Single color</option>
+              </select>
+            </label>
+            {[
+              ["primaryColor", "Primary"],
+              ["secondaryColor", "Secondary"],
+              ["accentColor", "Accent"],
+            ].map(([key, label]) => (
+              <label key={key} className="admin-field">
+                <span>{label}</span>
+                <div className="color-input-row">
+                  <input
+                    type="color"
+                    value={draftVisualSettings[key]}
+                    onChange={(event) => setDraftVisualSettings((settings) => ({ ...settings, [key]: event.target.value }))}
+                  />
+                  <input
+                    value={draftVisualSettings[key]}
+                    onChange={(event) => setDraftVisualSettings((settings) => ({ ...settings, [key]: event.target.value }))}
+                    maxLength={7}
+                  />
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
 
         <div className="overflow-hidden rounded-lg border border-[#c6d49f] bg-white shadow-glow">
           <div className="grid grid-cols-[1fr_110px_110px] gap-3 border-b border-[#dbe4c5] bg-[#f8fbf3] px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-[#60704a]">
@@ -792,9 +919,10 @@ function arrangeLeaves(leaves, shapePoints = []) {
   });
 }
 
-function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, onPointerDown }) {
+function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, visualSettings = DEFAULT_VISUAL_SETTINGS, onPointerDown }) {
   const name = String(leafItem.name || "");
   const textSize = Math.max(5.2, Math.min(9.2, 11.8 - name.length * 0.32));
+  const nodeColor = getNodeColor(visualSettings, leafItem.id);
 
   return (
     <g
@@ -810,13 +938,13 @@ function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, onPointerDown }) 
       >
         <motion.path
           d="M-6,-18 C17,-18 36,-4 42,16 C18,22 -9,18 -34,-3 C-27,-12 -18,-17 -6,-18 Z"
-          fill="rgba(18, 190, 206, 0.28)"
-          stroke="#59f1ff"
+          fill={rgba(nodeColor, 0.3)}
+          stroke={nodeColor}
           strokeWidth="2.4"
-          animate={isNewest ? { filter: ["drop-shadow(0 0 0px #58f1ff)", "drop-shadow(0 0 22px #58f1ff)", "drop-shadow(0 0 0px #58f1ff)"] } : {}}
+          animate={isNewest ? { filter: [`drop-shadow(0 0 0px ${nodeColor})`, `drop-shadow(0 0 24px ${nodeColor})`, `drop-shadow(0 0 0px ${nodeColor})`] } : {}}
           transition={{ duration: 1.8, repeat: isNewest ? 2 : 0 }}
         />
-        <path d="M-25,-3 C-8,0 13,3 32,11" fill="none" stroke="#b9fbff" strokeOpacity="0.42" strokeWidth="1.7" />
+        <path d="M-25,-3 C-8,0 13,3 32,11" fill="none" stroke={visualSettings.accentColor} strokeOpacity="0.46" strokeWidth="1.7" />
         <text x="4" y="4" textAnchor="middle" className="leaf-name node-name" style={{ fontSize: textSize }}>
           {name}
         </text>
@@ -825,21 +953,24 @@ function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, onPointerDown }) 
   );
 }
 
-function DigitalTreeSvg({ nodes = [], shapePoints = [], showShapeGuide = false }) {
+function DigitalTreeSvg({ nodes = [], shapePoints = [], showShapeGuide = false, visualSettings = DEFAULT_VISUAL_SETTINGS }) {
   const canopyPath = shapePointsToPath(shapePoints);
   const root = { x: 604, y: 700 };
   const neck = { x: 605, y: 450 };
+  const primary = visualSettings.primaryColor;
+  const secondary = visualSettings.secondaryColor;
+  const accent = visualSettings.accentColor;
 
   return (
     <g>
       <defs>
         <radialGradient id="digital-bg-glow" cx="50%" cy="35%" r="62%">
-          <stop offset="0%" stopColor="#137f92" stopOpacity="0.55" />
+          <stop offset="0%" stopColor={secondary} stopOpacity="0.36" />
           <stop offset="45%" stopColor="#083b49" stopOpacity="0.85" />
           <stop offset="100%" stopColor="#04171e" stopOpacity="1" />
         </radialGradient>
-        <filter id="cyan-glow" x="-80%" y="-80%" width="260%" height="260%">
-          <feGaussianBlur stdDeviation="4" result="blur" />
+        <filter id="cyan-glow" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="5.5" result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
             <feMergeNode in="SourceGraphic" />
@@ -854,37 +985,38 @@ function DigitalTreeSvg({ nodes = [], shapePoints = [], showShapeGuide = false }
         {Array.from({ length: 90 }).map((_, index) => {
           const x = (hashText(`star-x-${index}`) % TREE_WIDTH);
           const y = (hashText(`star-y-${index}`) % 480) + 40;
-          return <circle key={index} cx={x} cy={y} r={(index % 3) + 0.8} fill="#71f7ff" />;
+          return <circle key={index} cx={x} cy={y} r={(index % 3) + 0.8} fill={accent} />;
         })}
       </g>
       {showShapeGuide && (
         <path
           d={canopyPath}
-          fill="rgba(89, 241, 255, 0.06)"
-          stroke="#59f1ff"
+          fill={rgba(primary, 0.06)}
+          stroke={primary}
           strokeDasharray="12 10"
           strokeWidth="4"
         />
       )}
-      <ellipse cx="610" cy="720" rx="260" ry="20" fill="#57f6ff" opacity="0.08" />
+      <ellipse cx="610" cy="720" rx="260" ry="20" fill={primary} opacity="0.08" />
       <g filter="url(#cyan-glow)">
-        <path d="M582,708 C566,604 578,520 602,440 C626,520 634,604 626,708" fill="none" stroke="#58f1ff" strokeWidth="3" opacity="0.75" />
-        <path d="M604,708 C594,612 598,526 606,438 C617,526 622,612 616,708" fill="none" stroke="#99fbff" strokeWidth="2" opacity="0.9" />
-        <path d="M628,708 C662,602 646,520 610,438" fill="none" stroke="#2bd9e8" strokeWidth="2" opacity="0.62" />
+        <path d="M582,708 C566,604 578,520 602,440 C626,520 634,604 626,708" fill="none" stroke={primary} strokeWidth="3.2" opacity="0.82" />
+        <path d="M604,708 C594,612 598,526 606,438 C617,526 622,612 616,708" fill="none" stroke={accent} strokeWidth="2.2" opacity="0.95" />
+        <path d="M628,708 C662,602 646,520 610,438" fill="none" stroke={secondary} strokeWidth="2.2" opacity="0.74" />
         {nodes.map((node, index) => {
           const sidePull = node.x < neck.x ? -80 : 80;
           const midY = Math.min(500, Math.max(245, node.y + 120));
           const path = `M${root.x},${root.y} C${root.x + sidePull * 0.25},${610 - index % 80} ${neck.x + sidePull},${midY} ${node.x},${node.y}`;
+          const lineColor = getNodeColor(visualSettings, node.id);
           return (
             <motion.path
               key={`${node.id}-line`}
               d={path}
               fill="none"
-              stroke={index % 3 === 0 ? "#7efbff" : "#26cbdc"}
-              strokeWidth={index % 5 === 0 ? 1.8 : 1.1}
-              strokeOpacity="0.42"
+              stroke={lineColor}
+              strokeWidth={index % 5 === 0 ? 2.2 : 1.35}
+              strokeOpacity="0.56"
               initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: 0.42 }}
+              animate={{ pathLength: 1, opacity: 0.56 }}
               transition={{ duration: 1.1, delay: Math.min(index * 0.012, 0.9) }}
             />
           );
