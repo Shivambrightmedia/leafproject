@@ -21,6 +21,7 @@ const TREE_HEIGHT = 760;
 const CANOPY_CENTER = { x: 610, y: 285 };
 const CANOPY_RADIUS = { x: 465, y: 255 };
 const CANOPY_CLIP_ID = "wish-tree-canopy-clip";
+const DEFAULT_CANOPY_PATH = "M122,334 C145,188 292,93 475,92 C522,38 697,38 746,92 C928,94 1075,188 1098,334 C1117,455 1006,539 844,516 C770,575 452,575 376,516 C214,539 103,455 122,334 Z";
 
 function seededRandom(seed) {
   let value = seed;
@@ -46,7 +47,7 @@ function createLeafPlacement(name, count) {
   };
 }
 
-function createTreeSlots(count) {
+function createTreeSlots(count, shapePoints = []) {
   const columns = Math.min(20, Math.max(10, Math.ceil(Math.sqrt(Math.max(count, 1)) * 1.7)));
   const rows = Math.max(1, Math.ceil(count / columns) + 2);
   const slots = [];
@@ -58,7 +59,7 @@ function createTreeSlots(count) {
       const x = 120 + normalizedX * 980;
       const y = 75 + normalizedY * 460;
 
-      if (isInsideCanopyShape(x, y)) {
+      if (isInsideActiveShape(x, y, shapePoints)) {
         slots.push({
           x,
           y,
@@ -68,6 +69,11 @@ function createTreeSlots(count) {
   }
 
   return slots.length ? slots : [CANOPY_CENTER];
+}
+
+function isInsideActiveShape(x, y, shapePoints = []) {
+  if (shapePoints.length > 2) return isPointInPolygon({ x, y }, shapePoints);
+  return isInsideCanopyShape(x, y);
 }
 
 function isInsideCanopyShape(x, y) {
@@ -80,8 +86,30 @@ function isInsideCanopyShape(x, y) {
   return (upperCrown || leftShoulder || rightShoulder || lowerCenter) && !trunkGap;
 }
 
-function createTreePlacement(leafItem, index, total, salt = "") {
-  const slots = createTreeSlots(total);
+function isPointInPolygon(point, polygon) {
+  let inside = false;
+
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+    const xi = polygon[i].x;
+    const yi = polygon[i].y;
+    const xj = polygon[j].x;
+    const yj = polygon[j].y;
+    const intersects = yi > point.y !== yj > point.y
+      && point.x < ((xj - xi) * (point.y - yi)) / (yj - yi || 1) + xi;
+
+    if (intersects) inside = !inside;
+  }
+
+  return inside;
+}
+
+function shapePointsToPath(points) {
+  if (!points?.length) return DEFAULT_CANOPY_PATH;
+  return `${points.map((point, index) => `${index === 0 ? "M" : "L"}${point.x},${point.y}`).join(" ")} Z`;
+}
+
+function createTreePlacement(leafItem, index, total, salt = "", shapePoints = []) {
+  const slots = createTreeSlots(total, shapePoints);
   const slotIndex = (index + hashText(`${leafItem.id || leafItem.name}-${salt}`)) % slots.length;
   const slot = slots[slotIndex];
   const jitterX = ((hashText(`${leafItem.id}-x-${salt}`) % 100) - 50) * 0.3;
@@ -126,6 +154,21 @@ function useLeaves() {
   }, []);
 
   return { leaves, status };
+}
+
+function useCanopyShape() {
+  const [shapePoints, setShapePoints] = useState([]);
+
+  useEffect(() => {
+    if (!firebaseReady) return undefined;
+
+    return onValue(ref(db, "settings/canopyShape"), (snapshot) => {
+      const points = snapshot.val();
+      setShapePoints(Array.isArray(points) ? points : []);
+    });
+  }, []);
+
+  return shapePoints;
 }
 
 class ErrorBoundary extends Component {
@@ -275,10 +318,15 @@ function SubmitPage() {
 
 function DisplayPage() {
   const { leaves, status } = useLeaves();
+  const shapePoints = useCanopyShape();
   const previousIds = useRef(new Set());
   const [newestId, setNewestId] = useState(null);
+  const [drawingMode, setDrawingMode] = useState(false);
+  const [draftPoints, setDraftPoints] = useState([]);
+  const [isDrawing, setIsDrawing] = useState(false);
 
-  const arrangedLeaves = useMemo(() => arrangeLeaves(leaves), [leaves]);
+  const activeShape = draftPoints.length > 2 ? draftPoints : shapePoints;
+  const arrangedLeaves = useMemo(() => arrangeLeaves(leaves, shapePoints), [leaves, shapePoints]);
   const newestLeaf = arrangedLeaves.find((leafItem) => leafItem.id === newestId) || arrangedLeaves.at(-1);
 
   useEffect(() => {
@@ -287,6 +335,57 @@ function DisplayPage() {
     if (added && previousIds.current.size) setNewestId(added.id);
     previousIds.current = currentIds;
   }, [leaves]);
+
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "5") {
+        setDrawingMode((current) => !current);
+        setDraftPoints([]);
+        setIsDrawing(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  function getSvgPoint(event) {
+    const svg = event.currentTarget;
+    const point = svg.createSVGPoint();
+    point.x = event.clientX;
+    point.y = event.clientY;
+    const transformed = point.matrixTransform(svg.getScreenCTM().inverse());
+    return {
+      x: Math.round(Math.min(TREE_WIDTH, Math.max(0, transformed.x))),
+      y: Math.round(Math.min(TREE_HEIGHT, Math.max(0, transformed.y))),
+    };
+  }
+
+  function startDrawing(event) {
+    if (!drawingMode) return;
+    const point = getSvgPoint(event);
+    setDraftPoints([point]);
+    setIsDrawing(true);
+  }
+
+  function drawPoint(event) {
+    if (!drawingMode || !isDrawing) return;
+    const point = getSvgPoint(event);
+    setDraftPoints((points) => {
+      const last = points.at(-1);
+      if (last && Math.hypot(last.x - point.x, last.y - point.y) < 8) return points;
+      return [...points, point];
+    });
+  }
+
+  async function finishDrawing() {
+    if (!drawingMode || !isDrawing) return;
+    setIsDrawing(false);
+
+    if (draftPoints.length > 8 && firebaseReady) {
+      await set(ref(db, "settings/canopyShape"), draftPoints);
+    }
+  }
 
   return (
     <main className="display-shell">
@@ -300,8 +399,23 @@ function DisplayPage() {
         </div>
       </div>
 
-      <svg className="tree-stage" viewBox={`0 0 ${TREE_WIDTH} ${TREE_HEIGHT}`} role="img" aria-label="Digital wish tree">
-        <TreeSvg />
+      {drawingMode && (
+        <div className="draw-shape-hint">
+          Draw shape. Release to save. Press 5 to exit.
+        </div>
+      )}
+
+      <svg
+        className={`tree-stage ${drawingMode ? "is-drawing-shape" : ""}`}
+        viewBox={`0 0 ${TREE_WIDTH} ${TREE_HEIGHT}`}
+        role="img"
+        aria-label="Digital wish tree"
+        onPointerDown={startDrawing}
+        onPointerMove={drawPoint}
+        onPointerUp={finishDrawing}
+        onPointerLeave={finishDrawing}
+      >
+        <TreeSvg shapePoints={activeShape} showShapeGuide={drawingMode} />
         <g clipPath={`url(#${CANOPY_CLIP_ID})`}>
           <AnimatePresence>
             {arrangedLeaves.map((leafItem) => (
@@ -316,6 +430,7 @@ function DisplayPage() {
 
 function AdminPage() {
   const { leaves, status } = useLeaves();
+  const shapePoints = useCanopyShape();
   const [busyId, setBusyId] = useState("");
   const [message, setMessage] = useState("");
 
@@ -358,7 +473,7 @@ function AdminPage() {
       const updates = {};
       const salt = String(Date.now());
       leaves.forEach((leafItem, index) => {
-        const placement = createTreePlacement(leafItem, index, leaves.length, salt);
+        const placement = createTreePlacement(leafItem, index, leaves.length, salt, shapePoints);
         updates[`leaves/${leafItem.id}/x`] = placement.x;
         updates[`leaves/${leafItem.id}/y`] = placement.y;
         updates[`leaves/${leafItem.id}/rotate`] = placement.rotate;
@@ -462,9 +577,9 @@ function AdminPage() {
   );
 }
 
-function arrangeLeaves(leaves) {
+function arrangeLeaves(leaves, shapePoints = []) {
   return leaves.map((leafItem, index) => {
-    const fallback = createTreePlacement(leafItem, index, leaves.length);
+    const fallback = createTreePlacement(leafItem, index, leaves.length, "", shapePoints);
     const x = Number.isFinite(Number(leafItem.x)) ? Number(leafItem.x) : fallback.x;
     const y = Number.isFinite(Number(leafItem.y)) ? Number(leafItem.y) : fallback.y;
 
@@ -506,14 +621,25 @@ function WishLeaf({ leaf: leafItem, isNewest }) {
   );
 }
 
-function TreeSvg() {
+function TreeSvg({ shapePoints = [], showShapeGuide = false }) {
+  const canopyPath = shapePointsToPath(shapePoints);
+
   return (
     <g>
       <defs>
         <clipPath id={CANOPY_CLIP_ID}>
-          <path d="M122,334 C145,188 292,93 475,92 C522,38 697,38 746,92 C928,94 1075,188 1098,334 C1117,455 1006,539 844,516 C770,575 452,575 376,516 C214,539 103,455 122,334 Z" />
+          <path d={canopyPath} />
         </clipPath>
       </defs>
+      {showShapeGuide && (
+        <path
+          d={canopyPath}
+          fill="rgba(47, 143, 70, 0.08)"
+          stroke="#2f8f46"
+          strokeDasharray="12 10"
+          strokeWidth="4"
+        />
+      )}
       <ellipse cx="610" cy="710" rx="390" ry="34" fill="#29412e" opacity="0.13" />
       <path d="M522,690 C574,560 570,438 604,328 C650,444 652,560 704,690 Z" fill="#f47a28" />
       <path d="M604,328 C596,460 600,578 606,690" fill="none" stroke="#ffad5a" strokeWidth="18" strokeLinecap="round" opacity="0.42" />

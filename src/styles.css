@@ -69,6 +69,28 @@ body {
   height: 95vh;
 }
 
+.tree-stage.is-drawing-shape {
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.draw-shape-hint {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 24px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(23, 59, 39, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 12px 18px;
+  color: #173b27;
+  font-size: 16px;
+  font-weight: 900;
+  box-shadow: 0 18px 60px rgba(31, 95, 64, 0.16);
+  backdrop-filter: blur(10px);
+}
+
 .leaf-name {
   pointer-events: none;
   fill: #ffffff;
