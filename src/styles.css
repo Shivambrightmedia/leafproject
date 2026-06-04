@@ -37,6 +37,8 @@ body {
   justify-content: space-between;
   gap: 18px;
   color: #173b27;
+  pointer-events: none;
+  user-select: none;
 }
 
 .newest-leaf {
@@ -64,9 +66,9 @@ body {
 
 .tree-stage {
   position: absolute;
-  inset: 5vh 2vw 0;
-  width: 96vw;
-  height: 95vh;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
 }
 
 .tree-stage.is-drawing-shape {
@@ -89,6 +91,7 @@ body {
   box-shadow: 0 18px 60px rgba(31, 95, 64, 0.16);
   backdrop-filter: blur(10px);
   pointer-events: none;
+  user-select: none;
 }
 
 .leaf-name {
@@ -133,7 +136,7 @@ body {
   }
 
   .tree-stage {
-    inset: 11vh -38vw 0;
-    width: 176vw;
+    inset: 0;
+    width: 100vw;
   }
 }

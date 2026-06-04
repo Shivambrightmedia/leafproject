@@ -479,6 +479,8 @@ function DisplayPage() {
 
   function startDrawing(event) {
     if (!drawingMode) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     const point = getSvgPoint(event);
     setDraftPoints([point]);
     setIsDrawing(true);
@@ -486,6 +488,7 @@ function DisplayPage() {
 
   function drawPoint(event) {
     if (!drawingMode || !isDrawing) return;
+    event.preventDefault();
     const point = getSvgPoint(event);
     setDraftPoints((points) => {
       const last = points.at(-1);
