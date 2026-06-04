@@ -20,6 +20,7 @@ const TREE_HEIGHT = 760;
 
 const CANOPY_CENTER = { x: 610, y: 285 };
 const CANOPY_RADIUS = { x: 465, y: 255 };
+const CANOPY_CLIP_ID = "wish-tree-canopy-clip";
 
 function seededRandom(seed) {
   let value = seed;
@@ -46,31 +47,37 @@ function createLeafPlacement(name, count) {
 }
 
 function createTreeSlots(count) {
-  const columns = Math.min(18, Math.max(9, Math.ceil(Math.sqrt(Math.max(count, 1)) * 1.55)));
-  const rows = Math.max(1, Math.ceil(count / columns));
+  const columns = Math.min(20, Math.max(10, Math.ceil(Math.sqrt(Math.max(count, 1)) * 1.7)));
+  const rows = Math.max(1, Math.ceil(count / columns) + 2);
   const slots = [];
 
   for (let row = 0; row < rows; row += 1) {
     for (let column = 0; column < columns; column += 1) {
       const normalizedX = columns === 1 ? 0 : column / (columns - 1);
       const normalizedY = rows === 1 ? 0 : row / (rows - 1);
-      const centeredX = normalizedX * 2 - 1;
-      const centeredY = normalizedY * 2 - 1;
-      const crownLimit = 1 - Math.abs(centeredX) ** 2 * 0.72;
-      const lowerTaper = 0.34 + Math.sin(normalizedX * Math.PI) * 0.66;
+      const x = 120 + normalizedX * 980;
+      const y = 75 + normalizedY * 460;
 
-      if (centeredY < crownLimit && (normalizedY < 0.72 || Math.abs(centeredX) < lowerTaper)) {
-        const archLift = Math.sin(normalizedX * Math.PI) * 85;
-        const shoulderDrop = Math.abs(centeredX) * 88;
+      if (isInsideCanopyShape(x, y)) {
         slots.push({
-          x: CANOPY_CENTER.x + centeredX * CANOPY_RADIUS.x,
-          y: 112 + normalizedY * 425 - archLift + shoulderDrop,
+          x,
+          y,
         });
       }
     }
   }
 
   return slots.length ? slots : [CANOPY_CENTER];
+}
+
+function isInsideCanopyShape(x, y) {
+  const upperCrown = ((x - 610) / 500) ** 2 + ((y - 260) / 230) ** 2 <= 1;
+  const leftShoulder = ((x - 405) / 235) ** 2 + ((y - 345) / 185) ** 2 <= 1;
+  const rightShoulder = ((x - 815) / 235) ** 2 + ((y - 345) / 185) ** 2 <= 1;
+  const lowerCenter = ((x - 610) / 265) ** 2 + ((y - 430) / 125) ** 2 <= 1;
+  const trunkGap = x > 535 && x < 685 && y > 455;
+
+  return (upperCrown || leftShoulder || rightShoulder || lowerCenter) && !trunkGap;
 }
 
 function createTreePlacement(leafItem, index, total, salt = "") {
@@ -295,11 +302,13 @@ function DisplayPage() {
 
       <svg className="tree-stage" viewBox={`0 0 ${TREE_WIDTH} ${TREE_HEIGHT}`} role="img" aria-label="Digital wish tree">
         <TreeSvg />
-        <AnimatePresence>
-          {arrangedLeaves.map((leafItem) => (
-            <WishLeaf key={leafItem.id} leaf={leafItem} isNewest={leafItem.id === newestId} />
-          ))}
-        </AnimatePresence>
+        <g clipPath={`url(#${CANOPY_CLIP_ID})`}>
+          <AnimatePresence>
+            {arrangedLeaves.map((leafItem) => (
+              <WishLeaf key={leafItem.id} leaf={leafItem} isNewest={leafItem.id === newestId} />
+            ))}
+          </AnimatePresence>
+        </g>
       </svg>
     </main>
   );
@@ -500,6 +509,11 @@ function WishLeaf({ leaf: leafItem, isNewest }) {
 function TreeSvg() {
   return (
     <g>
+      <defs>
+        <clipPath id={CANOPY_CLIP_ID}>
+          <path d="M122,334 C145,188 292,93 475,92 C522,38 697,38 746,92 C928,94 1075,188 1098,334 C1117,455 1006,539 844,516 C770,575 452,575 376,516 C214,539 103,455 122,334 Z" />
+        </clipPath>
+      </defs>
       <ellipse cx="610" cy="710" rx="390" ry="34" fill="#29412e" opacity="0.13" />
       <path d="M522,690 C574,560 570,438 604,328 C650,444 652,560 704,690 Z" fill="#f47a28" />
       <path d="M604,328 C596,460 600,578 606,690" fill="none" stroke="#ffad5a" strokeWidth="18" strokeLinecap="round" opacity="0.42" />
