@@ -23,7 +23,7 @@ const CANOPY_RADIUS = { x: 465, y: 255 };
 const CANOPY_CLIP_ID = "wish-tree-canopy-clip";
 const DEFAULT_CANOPY_PATH = "M122,334 C145,188 292,93 475,92 C522,38 697,38 746,92 C928,94 1075,188 1098,334 C1117,455 1006,539 844,516 C770,575 452,575 376,516 C214,539 103,455 122,334 Z";
 const LEAF_SAFE_BOUNDS = { minX: 175, maxX: 1025, minY: 70, maxY: 525 };
-const LEAF_BORDER_PADDING = 92;
+const LEAF_BORDER_PADDING = 120;
 const LEAF_MIN_DISTANCE = 68;
 
 function seededRandom(seed) {
@@ -697,8 +697,13 @@ function arrangeLeaves(leaves, shapePoints = []) {
 
   return leaves.map((leafItem, index) => {
     const fallback = fallbackPlacements[index] || createTreePlacement(leafItem, index, leaves.length, "", shapePoints);
-    const x = Number.isFinite(Number(leafItem.x)) ? Number(leafItem.x) : fallback.x;
-    const y = Number.isFinite(Number(leafItem.y)) ? Number(leafItem.y) : fallback.y;
+    const savedX = Number(leafItem.x);
+    const savedY = Number(leafItem.y);
+    const savedPositionIsUsable = Number.isFinite(savedX)
+      && Number.isFinite(savedY)
+      && isInsideActiveShape(savedX, savedY, shapePoints, LEAF_BORDER_PADDING);
+    const x = savedPositionIsUsable ? savedX : fallback.x;
+    const y = savedPositionIsUsable ? savedY : fallback.y;
 
     return {
       ...leafItem,
