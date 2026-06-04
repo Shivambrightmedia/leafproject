@@ -579,7 +579,7 @@ function DisplayPage() {
     <main className="display-shell">
       <div className="display-hud">
         <div>
-          <h1 className="text-4xl font-black leading-none text-[#173b27]">{leaves.length} trees</h1>
+          <h1 className="text-4xl font-black leading-none">{leaves.length} trees</h1>
         </div>
         <div className="newest-leaf">
           <Leaf size={18} />
@@ -603,7 +603,7 @@ function DisplayPage() {
         onPointerUp={finishDrawing}
         onPointerLeave={finishDrawing}
       >
-        <TreeSvg shapePoints={activeShape} showShapeGuide={drawingMode} />
+        <DigitalTreeSvg nodes={arrangedLeaves} shapePoints={activeShape} showShapeGuide={drawingMode} />
         <AnimatePresence>
           {arrangedLeaves.map((leafItem) => (
             <WishLeaf
@@ -793,11 +793,12 @@ function arrangeLeaves(leaves, shapePoints = []) {
 }
 
 function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, onPointerDown }) {
-  const textSize = Math.max(4.8, Math.min(8.4, 11.5 - String(leafItem.name || "").length * 0.36));
+  const textSize = Math.max(6, Math.min(10, 12 - String(leafItem.name || "").length * 0.24));
+  const icon = ["+", "AI", "Rx", "IoT", "DNA", "ECG"][hashText(leafItem.id) % 6];
 
   return (
     <g
-      transform={`translate(${leafItem.x} ${leafItem.y}) rotate(${leafItem.rotate})`}
+      transform={`translate(${leafItem.x} ${leafItem.y})`}
       onPointerDown={onPointerDown}
       style={{ cursor: canDrag ? "grab" : "default" }}
     >
@@ -807,17 +808,19 @@ function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, onPointerDown }) 
         exit={{ opacity: 0, scale: 0 }}
         transition={{ type: "spring", stiffness: 130, damping: 16 }}
       >
-        <motion.path
-          d="M-5,-15 C13,-16 28,-5 32,11 C12,16 -7,13 -25,-1 C-20,-9 -13,-14 -5,-15 Z"
-          fill={leafItem.color || LEAF_COLORS[0]}
-          stroke="#0f5f2f"
-          strokeOpacity="0.22"
-          strokeWidth="2"
-          animate={isNewest ? { filter: ["drop-shadow(0 0 0px #f3e572)", "drop-shadow(0 0 18px #f3e572)", "drop-shadow(0 0 0px #f3e572)"] } : {}}
+        <motion.circle
+          r="20"
+          fill="rgba(13, 183, 205, 0.24)"
+          stroke="#59f1ff"
+          strokeWidth="2.4"
+          animate={isNewest ? { filter: ["drop-shadow(0 0 0px #58f1ff)", "drop-shadow(0 0 22px #58f1ff)", "drop-shadow(0 0 0px #58f1ff)"] } : {}}
           transition={{ duration: 1.8, repeat: isNewest ? 2 : 0 }}
         />
-        <path d="M-18,-2 C-4,0 11,3 25,9" fill="none" stroke="#ffffff" strokeOpacity="0.34" strokeWidth="1.6" />
-        <text x="3" y="5" textAnchor="middle" className="leaf-name" style={{ fontSize: textSize }}>
+        <circle r="13" fill="rgba(76, 229, 241, 0.16)" stroke="rgba(138, 250, 255, 0.35)" />
+        <text x="0" y="4" textAnchor="middle" className="node-icon">
+          {icon}
+        </text>
+        <text x="0" y="34" textAnchor="middle" className="leaf-name node-name" style={{ fontSize: textSize }}>
           {leafItem.name}
         </text>
       </motion.g>
@@ -825,29 +828,71 @@ function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, onPointerDown }) 
   );
 }
 
-function TreeSvg({ shapePoints = [], showShapeGuide = false }) {
+function DigitalTreeSvg({ nodes = [], shapePoints = [], showShapeGuide = false }) {
   const canopyPath = shapePointsToPath(shapePoints);
+  const root = { x: 604, y: 700 };
+  const neck = { x: 605, y: 450 };
 
   return (
     <g>
       <defs>
+        <radialGradient id="digital-bg-glow" cx="50%" cy="35%" r="62%">
+          <stop offset="0%" stopColor="#137f92" stopOpacity="0.55" />
+          <stop offset="45%" stopColor="#083b49" stopOpacity="0.85" />
+          <stop offset="100%" stopColor="#04171e" stopOpacity="1" />
+        </radialGradient>
+        <filter id="cyan-glow" x="-80%" y="-80%" width="260%" height="260%">
+          <feGaussianBlur stdDeviation="4" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
         <clipPath id={CANOPY_CLIP_ID}>
           <path d={canopyPath} />
         </clipPath>
       </defs>
+      <rect x="0" y="0" width={TREE_WIDTH} height={TREE_HEIGHT} fill="url(#digital-bg-glow)" />
+      <g opacity="0.18">
+        {Array.from({ length: 90 }).map((_, index) => {
+          const x = (hashText(`star-x-${index}`) % TREE_WIDTH);
+          const y = (hashText(`star-y-${index}`) % 480) + 40;
+          return <circle key={index} cx={x} cy={y} r={(index % 3) + 0.8} fill="#71f7ff" />;
+        })}
+      </g>
       {showShapeGuide && (
         <path
           d={canopyPath}
-          fill="rgba(47, 143, 70, 0.08)"
-          stroke="#2f8f46"
+          fill="rgba(89, 241, 255, 0.06)"
+          stroke="#59f1ff"
           strokeDasharray="12 10"
           strokeWidth="4"
         />
       )}
-      <ellipse cx="610" cy="710" rx="390" ry="34" fill="#29412e" opacity="0.13" />
-      <path d="M522,690 C574,560 570,438 604,328 C650,444 652,560 704,690 Z" fill="#f47a28" />
-      <path d="M604,328 C596,460 600,578 606,690" fill="none" stroke="#ffad5a" strokeWidth="18" strokeLinecap="round" opacity="0.42" />
-      <path d="M646,365 C660,482 664,584 654,688" fill="none" stroke="#d85b1b" strokeWidth="14" strokeLinecap="round" opacity="0.28" />
+      <ellipse cx="610" cy="720" rx="260" ry="20" fill="#57f6ff" opacity="0.08" />
+      <g filter="url(#cyan-glow)">
+        <path d="M582,708 C566,604 578,520 602,440 C626,520 634,604 626,708" fill="none" stroke="#58f1ff" strokeWidth="3" opacity="0.75" />
+        <path d="M604,708 C594,612 598,526 606,438 C617,526 622,612 616,708" fill="none" stroke="#99fbff" strokeWidth="2" opacity="0.9" />
+        <path d="M628,708 C662,602 646,520 610,438" fill="none" stroke="#2bd9e8" strokeWidth="2" opacity="0.62" />
+        {nodes.map((node, index) => {
+          const sidePull = node.x < neck.x ? -80 : 80;
+          const midY = Math.min(500, Math.max(245, node.y + 120));
+          const path = `M${root.x},${root.y} C${root.x + sidePull * 0.25},${610 - index % 80} ${neck.x + sidePull},${midY} ${node.x},${node.y}`;
+          return (
+            <motion.path
+              key={`${node.id}-line`}
+              d={path}
+              fill="none"
+              stroke={index % 3 === 0 ? "#7efbff" : "#26cbdc"}
+              strokeWidth={index % 5 === 0 ? 1.8 : 1.1}
+              strokeOpacity="0.42"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 0.42 }}
+              transition={{ duration: 1.1, delay: Math.min(index * 0.012, 0.9) }}
+            />
+          );
+        })}
+      </g>
     </g>
   );
 }

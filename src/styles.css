@@ -22,8 +22,7 @@ body {
   position: relative;
   min-height: 100vh;
   overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(221, 235, 210, 0.95) 0%, rgba(245, 240, 230, 0.98) 62%, #d6c8a7 100%);
+  background: #04171e;
 }
 
 .display-hud {
@@ -36,7 +35,7 @@ body {
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
-  color: #173b27;
+  color: #d7feff;
   pointer-events: none;
   user-select: none;
 }
@@ -49,12 +48,13 @@ body {
   justify-content: center;
   gap: 10px;
   border: 1px solid rgba(23, 59, 39, 0.18);
+  color: #dcfeff;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.68);
+  background: rgba(3, 25, 32, 0.72);
   padding: 13px 18px;
   font-size: clamp(16px, 2vw, 28px);
   font-weight: 900;
-  box-shadow: 0 18px 60px rgba(31, 95, 64, 0.16);
+  box-shadow: 0 18px 60px rgba(89, 241, 255, 0.18);
   backdrop-filter: blur(10px);
 }
 
@@ -96,13 +96,24 @@ body {
 
 .leaf-name {
   pointer-events: none;
-  fill: #ffffff;
+  fill: #dfffff;
   font-size: 10px;
   font-weight: 900;
   paint-order: stroke;
-  stroke: rgba(15, 70, 37, 0.72);
-  stroke-width: 2.5px;
+  stroke: rgba(3, 24, 32, 0.92);
+  stroke-width: 3px;
   stroke-linejoin: round;
+}
+
+.node-icon {
+  pointer-events: none;
+  fill: #dfffff;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.node-name {
+  letter-spacing: 0;
 }
 
 .admin-button {
