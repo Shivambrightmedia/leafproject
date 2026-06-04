@@ -24,7 +24,7 @@ const CANOPY_CLIP_ID = "wish-tree-canopy-clip";
 const DEFAULT_CANOPY_PATH = "M122,334 C145,188 292,93 475,92 C522,38 697,38 746,92 C928,94 1075,188 1098,334 C1117,455 1006,539 844,516 C770,575 452,575 376,516 C214,539 103,455 122,334 Z";
 const LEAF_SAFE_BOUNDS = { minX: 175, maxX: 1025, minY: 70, maxY: 525 };
 const LEAF_BORDER_PADDING = 120;
-const LEAF_MIN_DISTANCE = 68;
+const LEAF_MIN_DISTANCE = 74;
 
 function seededRandom(seed) {
   let value = seed;
@@ -51,8 +51,8 @@ function createLeafPlacement(name, count) {
 }
 
 function createTreeSlots(count, shapePoints = []) {
-  const columns = Math.min(48, Math.max(18, Math.ceil(Math.sqrt(Math.max(count, 1)) * 3)));
-  const rows = Math.max(1, Math.ceil(count / columns) + 16);
+  const columns = Math.min(60, Math.max(22, Math.ceil(Math.sqrt(Math.max(count, 1)) * 3.7)));
+  const rows = Math.max(1, Math.ceil(count / columns) + 22);
   const slots = [];
 
   for (let row = 0; row < rows; row += 1) {
@@ -182,8 +182,8 @@ function createPackedPlacements(leaves, salt = "", shapePoints = []) {
     const preferredIndex = hashText(`${leafItem.id || leafItem.name}-${salt}`) % Math.max(slots.length, 1);
     let selected = null;
 
-    for (let attempt = 0; attempt < slots.length * 3; attempt += 1) {
-      const slot = slots[(preferredIndex + attempt * 11) % slots.length];
+    for (let attempt = 0; attempt < slots.length * 8; attempt += 1) {
+      const slot = slots[(preferredIndex + attempt * 17) % slots.length];
       const clear = used.every((point) => Math.hypot(point.x - slot.x, point.y - slot.y) >= LEAF_MIN_DISTANCE);
 
       if (clear) {
@@ -193,12 +193,21 @@ function createPackedPlacements(leaves, salt = "", shapePoints = []) {
     }
 
     if (!selected) {
-      const relaxedDistances = [0.9, 0.8, 0.7, 0.6];
+      const relaxedDistances = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65];
       for (const multiplier of relaxedDistances) {
         selected = slots.find((slot) => used.every((point) => Math.hypot(point.x - slot.x, point.y - slot.y) >= LEAF_MIN_DISTANCE * multiplier));
         if (selected) break;
       }
-      selected = selected || slots[index % slots.length] || CANOPY_CENTER;
+    }
+
+    if (!selected) {
+      selected = slots.reduce((best, slot) => {
+        const nearestDistance = used.length
+          ? Math.min(...used.map((point) => Math.hypot(point.x - slot.x, point.y - slot.y)))
+          : Infinity;
+        if (!best || nearestDistance > best.nearestDistance) return { ...slot, nearestDistance };
+        return best;
+      }, null) || slots[index % slots.length] || CANOPY_CENTER;
     }
 
     const jitterX = ((hashText(`${leafItem.id}-x-${salt}`) % 100) - 50) * 0.14;
@@ -423,9 +432,19 @@ function DisplayPage() {
   const [drawingMode, setDrawingMode] = useState(false);
   const [draftPoints, setDraftPoints] = useState([]);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [draggedLeafId, setDraggedLeafId] = useState("");
+  const [draggedLeafPosition, setDraggedLeafPosition] = useState(null);
 
   const activeShape = draftPoints.length > 2 ? draftPoints : shapePoints;
-  const arrangedLeaves = useMemo(() => arrangeLeaves(leaves, shapePoints), [leaves, shapePoints]);
+  const arrangedLeaves = useMemo(() => {
+    const arranged = arrangeLeaves(leaves, shapePoints);
+    if (!draggedLeafId || !draggedLeafPosition) return arranged;
+    return arranged.map((leafItem) => (
+      leafItem.id === draggedLeafId
+        ? { ...leafItem, x: draggedLeafPosition.x, y: draggedLeafPosition.y }
+        : leafItem
+    ));
+  }, [draggedLeafId, draggedLeafPosition, leaves, shapePoints]);
   const newestLeaf = arrangedLeaves.find((leafItem) => leafItem.id === newestId) || arrangedLeaves.at(-1);
 
   useEffect(() => {
@@ -435,12 +454,35 @@ function DisplayPage() {
     previousIds.current = currentIds;
   }, [leaves]);
 
+  async function rearrangeFromDisplay() {
+    if (!firebaseReady || !leaves.length) return;
+    const updates = {};
+    const placements = createPackedPlacements(leaves, String(Date.now()), shapePoints);
+
+    leaves.forEach((leafItem, index) => {
+      const placement = placements[index];
+      updates[`leaves/${leafItem.id}/x`] = placement.x;
+      updates[`leaves/${leafItem.id}/y`] = placement.y;
+      updates[`leaves/${leafItem.id}/rotate`] = placement.rotate;
+    });
+
+    await update(ref(db), updates);
+  }
+
   useEffect(() => {
     async function handleKeyDown(event) {
+      if (event.key === "1") {
+        event.preventDefault();
+        await rearrangeFromDisplay();
+        return;
+      }
+
       if (event.key === "5") {
         setDrawingMode((current) => !current);
         setDraftPoints([]);
         setIsDrawing(false);
+        setDraggedLeafId("");
+        setDraggedLeafPosition(null);
         return;
       }
 
@@ -463,7 +505,7 @@ function DisplayPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [drawingMode, draftPoints, shapePoints]);
+  }, [drawingMode, draftPoints, leaves, shapePoints]);
 
   function getSvgPoint(event) {
     const svg = event.currentTarget;
@@ -479,6 +521,7 @@ function DisplayPage() {
 
   function startDrawing(event) {
     if (!drawingMode) return;
+    if (draggedLeafId) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
     const point = getSvgPoint(event);
@@ -487,6 +530,12 @@ function DisplayPage() {
   }
 
   function drawPoint(event) {
+    if (drawingMode && draggedLeafId) {
+      event.preventDefault();
+      setDraggedLeafPosition(getSvgPoint(event));
+      return;
+    }
+
     if (!drawingMode || !isDrawing) return;
     event.preventDefault();
     const point = getSvgPoint(event);
@@ -498,12 +547,32 @@ function DisplayPage() {
   }
 
   async function finishDrawing() {
+    if (drawingMode && draggedLeafId && draggedLeafPosition && firebaseReady) {
+      await update(ref(db, `leaves/${draggedLeafId}`), {
+        x: draggedLeafPosition.x,
+        y: draggedLeafPosition.y,
+      });
+      setDraggedLeafId("");
+      setDraggedLeafPosition(null);
+      return;
+    }
+
     if (!drawingMode || !isDrawing) return;
     setIsDrawing(false);
 
     if (draftPoints.length > 8 && firebaseReady) {
       await set(ref(db, "settings/canopyShape"), draftPoints);
     }
+  }
+
+  function startLeafDrag(event, leafItem) {
+    if (!drawingMode) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setIsDrawing(false);
+    setDraggedLeafId(leafItem.id);
+    setDraggedLeafPosition({ x: leafItem.x, y: leafItem.y });
   }
 
   return (
@@ -520,7 +589,7 @@ function DisplayPage() {
 
       {drawingMode && (
         <div className="draw-shape-hint">
-          Draw shape. Release to save. Arrow keys move it. Press 5 to exit.
+          Draw shape or drag leaves. Press 1 to rearrange. Press 5 to exit.
         </div>
       )}
 
@@ -537,7 +606,13 @@ function DisplayPage() {
         <TreeSvg shapePoints={activeShape} showShapeGuide={drawingMode} />
         <AnimatePresence>
           {arrangedLeaves.map((leafItem) => (
-            <WishLeaf key={leafItem.id} leaf={leafItem} isNewest={leafItem.id === newestId} />
+            <WishLeaf
+              key={leafItem.id}
+              leaf={leafItem}
+              isNewest={leafItem.id === newestId}
+              canDrag={drawingMode}
+              onPointerDown={(event) => startLeafDrag(event, leafItem)}
+            />
           ))}
         </AnimatePresence>
       </svg>
@@ -717,11 +792,15 @@ function arrangeLeaves(leaves, shapePoints = []) {
   });
 }
 
-function WishLeaf({ leaf: leafItem, isNewest }) {
+function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, onPointerDown }) {
   const textSize = Math.max(4.8, Math.min(8.4, 11.5 - String(leafItem.name || "").length * 0.36));
 
   return (
-    <g transform={`translate(${leafItem.x} ${leafItem.y}) rotate(${leafItem.rotate})`}>
+    <g
+      transform={`translate(${leafItem.x} ${leafItem.y}) rotate(${leafItem.rotate})`}
+      onPointerDown={onPointerDown}
+      style={{ cursor: canDrag ? "grab" : "default" }}
+    >
       <motion.g
         initial={{ opacity: 0, scale: 0 }}
         animate={{ opacity: 1, scale: isNewest ? 1.18 : 1 }}
