@@ -793,12 +793,12 @@ function arrangeLeaves(leaves, shapePoints = []) {
 }
 
 function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, onPointerDown }) {
-  const textSize = Math.max(6, Math.min(10, 12 - String(leafItem.name || "").length * 0.24));
-  const icon = ["+", "AI", "Rx", "IoT", "DNA", "ECG"][hashText(leafItem.id) % 6];
+  const name = String(leafItem.name || "");
+  const textSize = Math.max(5.2, Math.min(9.2, 11.8 - name.length * 0.32));
 
   return (
     <g
-      transform={`translate(${leafItem.x} ${leafItem.y})`}
+      transform={`translate(${leafItem.x} ${leafItem.y}) rotate(${leafItem.rotate || 0})`}
       onPointerDown={onPointerDown}
       style={{ cursor: canDrag ? "grab" : "default" }}
     >
@@ -808,20 +808,17 @@ function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, onPointerDown }) 
         exit={{ opacity: 0, scale: 0 }}
         transition={{ type: "spring", stiffness: 130, damping: 16 }}
       >
-        <motion.circle
-          r="20"
-          fill="rgba(13, 183, 205, 0.24)"
+        <motion.path
+          d="M-6,-18 C17,-18 36,-4 42,16 C18,22 -9,18 -34,-3 C-27,-12 -18,-17 -6,-18 Z"
+          fill="rgba(18, 190, 206, 0.28)"
           stroke="#59f1ff"
           strokeWidth="2.4"
           animate={isNewest ? { filter: ["drop-shadow(0 0 0px #58f1ff)", "drop-shadow(0 0 22px #58f1ff)", "drop-shadow(0 0 0px #58f1ff)"] } : {}}
           transition={{ duration: 1.8, repeat: isNewest ? 2 : 0 }}
         />
-        <circle r="13" fill="rgba(76, 229, 241, 0.16)" stroke="rgba(138, 250, 255, 0.35)" />
-        <text x="0" y="4" textAnchor="middle" className="node-icon">
-          {icon}
-        </text>
-        <text x="0" y="34" textAnchor="middle" className="leaf-name node-name" style={{ fontSize: textSize }}>
-          {leafItem.name}
+        <path d="M-25,-3 C-8,0 13,3 32,11" fill="none" stroke="#b9fbff" strokeOpacity="0.42" strokeWidth="1.7" />
+        <text x="4" y="4" textAnchor="middle" className="leaf-name node-name" style={{ fontSize: textSize }}>
+          {name}
         </text>
       </motion.g>
     </g>

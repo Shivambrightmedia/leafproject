@@ -105,13 +105,6 @@ body {
   stroke-linejoin: round;
 }
 
-.node-icon {
-  pointer-events: none;
-  fill: #dfffff;
-  font-size: 9px;
-  font-weight: 900;
-}
-
 .node-name {
   letter-spacing: 0;
 }
