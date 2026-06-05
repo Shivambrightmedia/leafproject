@@ -105,6 +105,8 @@ function createTreeSlots(count, shapePoints = []) {
   return slots.length ? slots : [CANOPY_CENTER];
 }
 
+
+
 function isInsideActiveShape(x, y, shapePoints = [], padding = 0) {
   if (!isInsideLeafSafeArea(x, y)) return false;
   if (shapePoints.length > 2) return isPointSafelyInPolygon({ x, y }, shapePoints, padding);
