@@ -379,21 +379,23 @@ function useShowSettings() {
 function useTimedVisibleCount(total, showSettings) {
   const [now, setNow] = useState(Date.now());
 
+  const batchSeconds = Math.max(0.1, Number(showSettings.nameBatchSeconds) || 1);
+  const namesPerBatch = Math.max(1, Number(showSettings.namesPerBatch) || 1);
+  const elapsedSeconds = Math.max(0, (now - Number(showSettings.revealStartedAt || 0)) / 1000);
+  const batches = Math.floor(elapsedSeconds / batchSeconds) + 1;
+  const currentCount = Math.min(total, batches * namesPerBatch);
+
   useEffect(() => {
     if (!showSettings.namesVisible || !showSettings.revealStartedAt) return undefined;
+    if (currentCount >= total) return undefined;
     const timer = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(timer);
-  }, [showSettings.namesVisible, showSettings.revealStartedAt]);
+  }, [showSettings.namesVisible, showSettings.revealStartedAt, currentCount, total]);
 
   if (!showSettings.namesVisible) return 0;
   if (!showSettings.revealStartedAt) return total;
 
-  const batchSeconds = Math.max(0.1, Number(showSettings.nameBatchSeconds) || 1);
-  const namesPerBatch = Math.max(1, Number(showSettings.namesPerBatch) || 1);
-  const elapsedSeconds = Math.max(0, (now - Number(showSettings.revealStartedAt)) / 1000);
-  const batches = Math.floor(elapsedSeconds / batchSeconds) + 1;
-
-  return Math.min(total, batches * namesPerBatch);
+  return currentCount;
 }
 
 class ErrorBoundary extends Component {
@@ -1209,33 +1211,40 @@ function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, visualSettings = 
   const textSize = Math.max(5.2, Math.min(9.2, 11.8 - name.length * 0.32));
   const nodeColor = getNodeColor(visualSettings, leafItem.id);
   const fallSeed = hashText(`${leafItem.id || name}-fall`);
-  const windDirection = fallSeed % 2 === 0 ? 1 : -1;
-  const windAmplitude = 34 + (fallSeed % 64);
-  const startDrift = windDirection * (120 + (fallSeed % 180));
   const fallDuration = 3.4 + (fallSeed % 11) * 0.18;
   const fallDelay = (fallSeed % 8) * 0.04;
-  const rotationDirection = fallSeed % 3 === 0 ? -1 : 1;
-  const rotationAmount = rotationDirection * (130 + (fallSeed % 150));
-  const swayX = [
-    startDrift,
-    startDrift - windDirection * windAmplitude * 0.8,
-    startDrift + windDirection * windAmplitude * 0.7,
-    startDrift - windDirection * windAmplitude * 0.55,
-    windDirection * windAmplitude * 0.3,
-    -windDirection * windAmplitude * 0.16,
-    0,
-  ];
-  const fallY = [-TREE_HEIGHT - (fallSeed % 160), -690, -520, -340, -170, -48, 0];
-  const fallRotate = [
-    rotationAmount * -0.65,
-    rotationAmount * 0.2,
-    rotationAmount * -0.35,
-    rotationAmount * 0.55,
-    rotationAmount * -0.16,
-    rotationAmount * 0.08,
-    0,
-  ];
-  const fallTimes = [0, 0.18, 0.36, 0.56, 0.76, 0.92, 1];
+
+  const { swayX, fallRotate, fallTimes, startY } = useMemo(() => {
+    const windDirection = fallSeed % 2 === 0 ? 1 : -1;
+    const startDrift = windDirection * (120 + (fallSeed % 180));
+    const startYValue = -TREE_HEIGHT - (fallSeed % 160);
+    const swings = 1.5 + ((fallSeed % 10) * 0.1);
+    const amplitude = 60 + (fallSeed % 50);
+    const steps = 20;
+    
+    const xArr = [];
+    const rotArr = [];
+    const tArr = [];
+    
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      tArr.push(t);
+      
+      if (i === steps) {
+        xArr.push(0);
+        rotArr.push(0);
+      } else {
+        const taper = 1 - t;
+        const sineValue = Math.sin(t * Math.PI * 2 * swings);
+        const gust = i === 0 ? 0 : ((hashText(`${leafItem.id}-g-${i}`) % 30) - 15);
+        
+        xArr.push((startDrift * taper) + (sineValue * amplitude) + gust);
+        rotArr.push(Math.cos(t * Math.PI * 2 * swings) * (amplitude * 0.6) + gust * 1.5);
+      }
+    }
+    
+    return { swayX: xArr, fallRotate: rotArr, fallTimes: tArr, startY: startYValue };
+  }, [leafItem.id, fallSeed]);
 
   return (
     <g
@@ -1244,20 +1253,20 @@ function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, visualSettings = 
       style={{ cursor: canDrag ? "grab" : "default" }}
     >
       <motion.g
-        initial={{ opacity: 0, scale: 0.72, x: startDrift, y: fallY[0], rotate: fallRotate[0] }}
+        initial={{ opacity: 0, scale: 0.72, x: swayX[0], y: startY, rotate: fallRotate[0] }}
         animate={{
           opacity: 1,
           scale: isNewest ? 1.18 : 1,
           x: swayX,
-          y: fallY,
+          y: [startY, 0],
           rotate: fallRotate,
         }}
         exit={{ opacity: 0, scale: 0 }}
         transition={{
           opacity: { duration: 0.5, delay: fallDelay },
           scale: { duration: fallDuration, delay: fallDelay, ease: "easeOut" },
-          x: { duration: fallDuration, delay: fallDelay, ease: "easeInOut", times: fallTimes },
-          y: { duration: fallDuration, delay: fallDelay, ease: [0.18, 0.02, 0.18, 1], times: fallTimes },
+          x: { duration: fallDuration, delay: fallDelay, ease: "linear", times: fallTimes },
+          y: { duration: fallDuration, delay: fallDelay, ease: "easeIn" },
           rotate: { duration: fallDuration, delay: fallDelay, ease: "linear", times: fallTimes },
         }}
       >
