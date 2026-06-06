@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "SISAN03";
+  src: url("/SISAN03.TTF") format("truetype");
+  font-display: swap;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -11,7 +17,7 @@ body,
 #root {
   min-height: 100%;
   margin: 0;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: "SISAN03", Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
 body {

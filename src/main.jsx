@@ -28,7 +28,7 @@ const DEFAULT_APP_SETTINGS = {
 };
 const DEFAULT_SHOW_SETTINGS = {
   raysVisible: false,
-  namesVisible: true,
+  namesVisible: false,
   rayDuration: 10,
   namesPerBatch: 3,
   nameBatchSeconds: 1,
@@ -491,12 +491,22 @@ function SubmitPage() {
     }
   }
 
-  if (sent && !appSettings.allowMultipleSubmissions) {
+  if (sent) {
     return (
       <main className="submit-shell">
         <section className="thank-you-panel">
           <Trees size={42} />
           <h1>Thank you</h1>
+          <p>Your sapling has been planted! Thank you for joining the Digital Tree Plantation.</p>
+          {appSettings.allowMultipleSubmissions && (
+            <button
+              type="button"
+              onClick={() => setSent(false)}
+              className="mt-6 rounded-md bg-[#00e6dc] px-5 py-3 text-sm font-black text-[#000028]"
+            >
+              Plant Another
+            </button>
+          )}
         </section>
       </main>
     );
@@ -509,7 +519,7 @@ function SubmitPage() {
           <div className="grid size-12 place-items-center rounded-full bg-white/10 text-white shadow-glow">
             <Trees size={26} />
           </div>
-          <h1 className="text-3xl font-black leading-tight text-white">Siemens Event</h1>
+          <h1 className="text-3xl font-black leading-tight text-white">The Digital Tree Plantation</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="rounded-lg border border-white/20 bg-white/10 p-5 shadow-glow backdrop-blur">
@@ -551,7 +561,7 @@ function SubmitPage() {
               className="mt-5 flex items-center gap-2 rounded-md bg-white/12 px-4 py-3 text-sm font-bold text-white"
             >
               <Sparkles size={17} />
-              Your tree is now live.
+              Your sapling has been planted! Thank you for joining the Digital Tree Plantation.
             </motion.div>
           )}
         </AnimatePresence>
@@ -586,6 +596,7 @@ function DisplayPage() {
         : leafItem
     ));
   }, [draggedLeafId, draggedLeafPosition, visibleLeaves, shapePoints]);
+  const rayLeaves = useMemo(() => arrangeLeaves(leaves, shapePoints), [leaves, shapePoints]);
   const newestLeaf = arrangedLeaves.find((leafItem) => leafItem.id === newestId) || arrangedLeaves.at(-1);
 
   useEffect(() => {
@@ -745,7 +756,7 @@ function DisplayPage() {
         onPointerLeave={finishDrawing}
       >
         <DigitalTreeSvg
-          nodes={arrangedLeaves}
+          nodes={rayLeaves}
           shapePoints={activeShape}
           showShapeGuide={drawingMode}
           visualSettings={visualSettings}
@@ -902,12 +913,33 @@ function AdminPage() {
   }
 
   async function showNames() {
-    await saveShowSettings({
-      ...draftShowSettings,
-      raysVisible: true,
-      namesVisible: true,
-      revealStartedAt: Date.now(),
-    });
+    if (!firebaseReady) return;
+    setBusyId("show-settings");
+    setMessage("");
+
+    try {
+      const updates = {};
+      const salt = String(Date.now());
+      const placements = createPackedPlacements(leaves, salt, shapePoints);
+      leaves.forEach((leafItem, index) => {
+        const placement = placements[index];
+        updates[`leaves/${leafItem.id}/x`] = placement.x;
+        updates[`leaves/${leafItem.id}/y`] = placement.y;
+        updates[`leaves/${leafItem.id}/rotate`] = placement.rotate;
+      });
+      updates["settings/show"] = {
+        ...draftShowSettings,
+        raysVisible: true,
+        namesVisible: true,
+        revealStartedAt: Date.now(),
+      };
+      await update(ref(db), updates);
+      setMessage("Names reveal started.");
+    } catch {
+      setMessage("Could not start name reveal. Check database rules.");
+    } finally {
+      setBusyId("");
+    }
   }
 
   async function resetDisplayShow() {
@@ -1175,6 +1207,9 @@ function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, visualSettings = 
   const name = String(leafItem.name || "");
   const textSize = Math.max(5.2, Math.min(9.2, 11.8 - name.length * 0.32));
   const nodeColor = getNodeColor(visualSettings, leafItem.id);
+  const fallSeed = hashText(`${leafItem.id || name}-fall`);
+  const drift = ((fallSeed % 120) - 60) * 2.2;
+  const fallSpin = (fallSeed % 2 === 0 ? 1 : -1) * (18 + (fallSeed % 18));
 
   return (
     <g
@@ -1183,10 +1218,20 @@ function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, visualSettings = 
       style={{ cursor: canDrag ? "grab" : "default" }}
     >
       <motion.g
-        initial={{ opacity: 0, scale: 0.8, y: -TREE_HEIGHT }}
-        animate={{ opacity: 1, scale: isNewest ? 1.18 : 1, y: 0 }}
+        initial={{ opacity: 0, scale: 0.74, x: drift, y: -TREE_HEIGHT, rotate: -fallSpin }}
+        animate={{
+          opacity: 1,
+          scale: isNewest ? 1.18 : 1,
+          x: [drift, drift * -0.35, drift * 0.18, 0],
+          y: [-TREE_HEIGHT, -430, -150, 0],
+          rotate: [-fallSpin, fallSpin * 0.45, fallSpin * -0.2, 0],
+        }}
         exit={{ opacity: 0, scale: 0 }}
-        transition={{ type: "spring", stiffness: 80, damping: 18, mass: 0.9 }}
+        transition={{
+          duration: 2.2 + (fallSeed % 7) * 0.12,
+          ease: [0.2, 0.72, 0.22, 1],
+          times: [0, 0.42, 0.76, 1],
+        }}
       >
         <motion.path
           d="M-6,-18 C17,-18 36,-4 42,16 C18,22 -9,18 -34,-3 C-27,-12 -18,-17 -6,-18 Z"
