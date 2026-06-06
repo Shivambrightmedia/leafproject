@@ -43,6 +43,7 @@ const DEFAULT_CANOPY_PATH = "M122,334 C145,188 292,93 475,92 C522,38 697,38 746,
 const LEAF_SAFE_BOUNDS = { minX: 175, maxX: 1025, minY: 70, maxY: 525 };
 const LEAF_BORDER_PADDING = 120;
 const LEAF_MIN_DISTANCE = 80;
+const LEAF_PLACEMENT_RETRY_MULTIPLIER = 48;
 
 function seededRandom(seed) {
   let value = seed;
@@ -94,16 +95,16 @@ function createLeafPlacement(name, count) {
 }
 
 function createTreeSlots(count, shapePoints = []) {
-  const columns = Math.min(72, Math.max(26, Math.ceil(Math.sqrt(Math.max(count, 1)) * 4.4)));
-  const rows = Math.max(1, Math.ceil(count / columns) + 28);
+  const columns = Math.min(118, Math.max(44, Math.ceil(Math.sqrt(Math.max(count, 1)) * 7.2)));
+  const rows = Math.max(38, Math.ceil(count / columns) + 52);
   const slots = [];
 
   for (let row = 0; row < rows; row += 1) {
     for (let column = 0; column < columns; column += 1) {
       const normalizedX = columns === 1 ? 0 : column / (columns - 1);
       const normalizedY = rows === 1 ? 0 : row / (rows - 1);
-      const x = 120 + normalizedX * 980;
-      const y = 75 + normalizedY * 460;
+      const x = 115 + normalizedX * 990;
+      const y = 62 + normalizedY * 478;
 
       if (isInsideActiveShape(x, y, shapePoints, LEAF_BORDER_PADDING)) {
         slots.push({
@@ -227,8 +228,8 @@ function createPackedPlacements(leaves, salt = "", shapePoints = []) {
     const preferredIndex = hashText(`${leafItem.id || leafItem.name}-${salt}`) % Math.max(slots.length, 1);
     let selected = null;
 
-    for (let attempt = 0; attempt < slots.length * 14; attempt += 1) {
-      const slot = slots[(preferredIndex + attempt * 19) % slots.length];
+    for (let attempt = 0; attempt < slots.length * LEAF_PLACEMENT_RETRY_MULTIPLIER; attempt += 1) {
+      const slot = slots[(preferredIndex + attempt * 37) % slots.length];
       const clear = used.every((point) => Math.hypot(point.x - slot.x, point.y - slot.y) >= LEAF_MIN_DISTANCE);
 
       if (clear) {
@@ -238,7 +239,7 @@ function createPackedPlacements(leaves, salt = "", shapePoints = []) {
     }
 
     if (!selected) {
-      const relaxedDistances = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65];
+      const relaxedDistances = [0.98, 0.96, 0.94, 0.92, 0.9, 0.86, 0.82, 0.78, 0.74, 0.7];
       for (const multiplier of relaxedDistances) {
         selected = slots.find((slot) => used.every((point) => Math.hypot(point.x - slot.x, point.y - slot.y) >= LEAF_MIN_DISTANCE * multiplier));
         if (selected) break;
@@ -1260,14 +1261,23 @@ function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, visualSettings = 
           rotate: { duration: fallDuration, delay: fallDelay, ease: "linear", times: fallTimes },
         }}
       >
-        <motion.path
+        <path
           d="M-6,-18 C17,-18 36,-4 42,16 C18,22 -9,18 -34,-3 C-27,-12 -18,-17 -6,-18 Z"
           fill={rgba(nodeColor, 0.3)}
           stroke={nodeColor}
           strokeWidth="2.4"
-          animate={isNewest ? { filter: [`drop-shadow(0 0 0px ${nodeColor})`, `drop-shadow(0 0 24px ${nodeColor})`, `drop-shadow(0 0 0px ${nodeColor})`] } : {}}
-          transition={{ duration: 1.8, repeat: isNewest ? 2 : 0 }}
         />
+        {isNewest && (
+          <motion.path
+            d="M-6,-18 C17,-18 36,-4 42,16 C18,22 -9,18 -34,-3 C-27,-12 -18,-17 -6,-18 Z"
+            fill="none"
+            stroke={nodeColor}
+            strokeWidth="3.6"
+            initial={{ opacity: 0.7, scale: 1 }}
+            animate={{ opacity: [0.7, 0], scale: [1, 1.34] }}
+            transition={{ duration: 1.4, repeat: 1, ease: "easeOut" }}
+          />
+        )}
         <path d="M-25,-3 C-8,0 13,3 32,11" fill="none" stroke={visualSettings.accentColor} strokeOpacity="0.46" strokeWidth="1.7" />
         <text x="4" y="4" textAnchor="middle" className="leaf-name node-name" style={{ fontSize: textSize }}>
           {name}
