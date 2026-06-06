@@ -492,6 +492,10 @@ function SubmitPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (appSettings.submissionsClosed) {
+      setError("Submissions are currently closed.");
+      return;
+    }
     const cleanName = name.trim().replace(/\s+/g, " ");
 
     if (!appSettings.allowMultipleSubmissions && localStorage.getItem(SUBMISSION_STORAGE_KEY) === "true") {
