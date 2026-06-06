@@ -851,6 +851,11 @@ function ViewPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedId, setHighlightedId] = useState(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [imageUrl, setImageUrl] = useState(null);
+  const [imageLoading, setImageLoading] = useState(false);
+
+  const CLOUDINARY_CLOUD = "derb7wswl";
+  const CLOUDINARY_FOLDER = "trees123";
 
   const arrangedLeaves = useMemo(() => arrangeLeaves(leaves, shapePoints), [leaves, shapePoints]);
   const rayLeaves = arrangedLeaves;
@@ -875,7 +880,21 @@ function ViewPage() {
     setShowSuggestions(false);
   }
 
-  // Override leaf positions: move highlighted leaf to center
+  function openLeafImage(leafItem) {
+    if (!leafItem || leafItem.id !== highlightedId) return;
+    const encodedName = encodeURIComponent(leafItem.name.trim());
+    const url = `https://res.cloudinary.com/${CLOUDINARY_CLOUD}/image/upload/${CLOUDINARY_FOLDER}/${encodedName}`;
+    setImageLoading(true);
+    const img = new Image();
+    img.onload = () => { setImageUrl(url); setImageLoading(false); };
+    img.onerror = () => { setImageLoading(false); };
+    img.src = url;
+  }
+
+  function closeImage() {
+    setImageUrl(null);
+  }
+
   const displayLeaves = useMemo(() => {
     if (!highlightedId) return arrangedLeaves;
     return arrangedLeaves.map((l) =>
@@ -943,28 +962,56 @@ function ViewPage() {
             leaf={leafItem}
             isHighlighted={leafItem.id === highlightedId}
             visualSettings={visualSettings}
+            onLeafClick={() => openLeafImage(leafItem)}
           />
         ))}
-        {highlightedId && (() => {
-          return (
-            <motion.circle
-              cx={CENTER_TARGET.x}
-              cy={CENTER_TARGET.y}
-              fill="none"
-              stroke={visualSettings.primaryColor}
-              strokeWidth="3"
-              initial={{ opacity: 0, r: 20 }}
-              animate={{ opacity: [0.8, 0.3, 0.8], r: [30, 55, 30] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            />
-          );
-        })()}
+        {highlightedId && (
+          <motion.circle
+            cx={CENTER_TARGET.x}
+            cy={CENTER_TARGET.y}
+            fill="none"
+            stroke={visualSettings.primaryColor}
+            strokeWidth="3"
+            initial={{ opacity: 0, r: 20 }}
+            animate={{ opacity: [0.8, 0.3, 0.8], r: [30, 55, 30] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          />
+        )}
       </svg>
+
+      {imageLoading && (
+        <div className="image-overlay">
+          <div className="image-overlay-loading">Loading...</div>
+        </div>
+      )}
+
+      <AnimatePresence>
+        {imageUrl && (
+          <motion.div
+            className="image-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeImage}
+          >
+            <motion.img
+              src={imageUrl}
+              alt={searchQuery}
+              className="image-overlay-img"
+              initial={{ scale: 0.7, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.7, opacity: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            />
+            <button type="button" className="image-overlay-close" onClick={closeImage}>✕</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }
 
-const ViewLeaf = React.memo(function ViewLeaf({ leaf: leafItem, isHighlighted, visualSettings = DEFAULT_VISUAL_SETTINGS }) {
+const ViewLeaf = React.memo(function ViewLeaf({ leaf: leafItem, isHighlighted, visualSettings = DEFAULT_VISUAL_SETTINGS, onLeafClick }) {
   const name = String(leafItem.name || "");
   const textSize = Math.max(5.2, Math.min(9.2, 11.8 - name.length * 0.32));
   const nodeColor = getNodeColor(visualSettings, leafItem.id);
@@ -978,6 +1025,8 @@ const ViewLeaf = React.memo(function ViewLeaf({ leaf: leafItem, isHighlighted, v
         scale: isHighlighted ? 1.5 : 1,
       }}
       transition={{ duration: 0.8, ease: "easeInOut" }}
+      onClick={isHighlighted ? onLeafClick : undefined}
+      style={{ cursor: isHighlighted ? "pointer" : "default" }}
     >
       <path
         d="M-6,-18 C17,-18 36,-4 42,16 C18,22 -9,18 -34,-3 C-27,-12 -18,-17 -6,-18 Z"
