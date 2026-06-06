@@ -26,6 +26,14 @@ const DEFAULT_VISUAL_SETTINGS = {
 const DEFAULT_APP_SETTINGS = {
   allowMultipleSubmissions: false,
 };
+const DEFAULT_SHOW_SETTINGS = {
+  raysVisible: false,
+  namesVisible: true,
+  rayDuration: 10,
+  namesPerBatch: 3,
+  nameBatchSeconds: 1,
+  revealStartedAt: 0,
+};
 const SUBMISSION_STORAGE_KEY = "siemens-event-submitted";
 
 const CANOPY_CENTER = { x: 610, y: 285 };
@@ -350,6 +358,43 @@ function useAppSettings() {
   return appSettings;
 }
 
+function useShowSettings() {
+  const [showSettings, setShowSettings] = useState(DEFAULT_SHOW_SETTINGS);
+
+  useEffect(() => {
+    if (!firebaseReady) return undefined;
+
+    return onValue(ref(db, "settings/show"), (snapshot) => {
+      setShowSettings({
+        ...DEFAULT_SHOW_SETTINGS,
+        ...(snapshot.val() || {}),
+      });
+    });
+  }, []);
+
+  return showSettings;
+}
+
+function useTimedVisibleCount(total, showSettings) {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!showSettings.namesVisible || !showSettings.revealStartedAt) return undefined;
+    const timer = window.setInterval(() => setNow(Date.now()), 250);
+    return () => window.clearInterval(timer);
+  }, [showSettings.namesVisible, showSettings.revealStartedAt]);
+
+  if (!showSettings.namesVisible) return 0;
+  if (!showSettings.revealStartedAt) return total;
+
+  const batchSeconds = Math.max(0.1, Number(showSettings.nameBatchSeconds) || 1);
+  const namesPerBatch = Math.max(1, Number(showSettings.namesPerBatch) || 1);
+  const elapsedSeconds = Math.max(0, (now - Number(showSettings.revealStartedAt)) / 1000);
+  const batches = Math.floor(elapsedSeconds / batchSeconds) + 1;
+
+  return Math.min(total, batches * namesPerBatch);
+}
+
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -484,7 +529,7 @@ function SubmitPage() {
             autoComplete="name"
           />
           <div className="mt-2 flex justify-between text-xs font-semibold text-white/75">
-            <span>{error || (status === "connected" ? "Ready to grow a tree." : "Connecting...")}</span>
+            <span>{error}</span>
             <span>{name.trim().length}/20</span>
           </div>
           <button
@@ -519,6 +564,7 @@ function DisplayPage() {
   const { leaves, status } = useLeaves();
   const shapePoints = useCanopyShape();
   const visualSettings = useVisualSettings();
+  const showSettings = useShowSettings();
   const previousIds = useRef(new Set());
   const [newestId, setNewestId] = useState(null);
   const [drawingMode, setDrawingMode] = useState(false);
@@ -528,15 +574,18 @@ function DisplayPage() {
   const [draggedLeafPosition, setDraggedLeafPosition] = useState(null);
 
   const activeShape = draftPoints.length > 2 ? draftPoints : shapePoints;
+  const visibleCount = useTimedVisibleCount(leaves.length, showSettings);
+  const visibleLeaves = showSettings.namesVisible ? leaves.slice(0, visibleCount) : [];
+
   const arrangedLeaves = useMemo(() => {
-    const arranged = arrangeLeaves(leaves, shapePoints);
+    const arranged = arrangeLeaves(visibleLeaves, shapePoints);
     if (!draggedLeafId || !draggedLeafPosition) return arranged;
     return arranged.map((leafItem) => (
       leafItem.id === draggedLeafId
         ? { ...leafItem, x: draggedLeafPosition.x, y: draggedLeafPosition.y }
         : leafItem
     ));
-  }, [draggedLeafId, draggedLeafPosition, leaves, shapePoints]);
+  }, [draggedLeafId, draggedLeafPosition, visibleLeaves, shapePoints]);
   const newestLeaf = arrangedLeaves.find((leafItem) => leafItem.id === newestId) || arrangedLeaves.at(-1);
 
   useEffect(() => {
@@ -700,6 +749,8 @@ function DisplayPage() {
           shapePoints={activeShape}
           showShapeGuide={drawingMode}
           visualSettings={visualSettings}
+          showRays={showSettings.raysVisible}
+          rayDuration={Number(showSettings.rayDuration) || 10}
         />
         <AnimatePresence>
           {arrangedLeaves.map((leafItem) => (
@@ -723,10 +774,12 @@ function AdminPage() {
   const shapePoints = useCanopyShape();
   const visualSettings = useVisualSettings();
   const appSettings = useAppSettings();
+  const showSettings = useShowSettings();
   const [busyId, setBusyId] = useState("");
   const [message, setMessage] = useState("");
   const [draftVisualSettings, setDraftVisualSettings] = useState(DEFAULT_VISUAL_SETTINGS);
   const [draftAppSettings, setDraftAppSettings] = useState(DEFAULT_APP_SETTINGS);
+  const [draftShowSettings, setDraftShowSettings] = useState(DEFAULT_SHOW_SETTINGS);
 
   useEffect(() => {
     setDraftVisualSettings(visualSettings);
@@ -735,6 +788,10 @@ function AdminPage() {
   useEffect(() => {
     setDraftAppSettings(appSettings);
   }, [appSettings]);
+
+  useEffect(() => {
+    setDraftShowSettings(showSettings);
+  }, [showSettings]);
 
   async function deleteLeaf(id) {
     if (!firebaseReady) return;
@@ -818,6 +875,48 @@ function AdminPage() {
     } finally {
       setBusyId("");
     }
+  }
+
+  async function saveShowSettings(nextSettings) {
+    if (!firebaseReady) return;
+    setBusyId("show-settings");
+    setMessage("");
+
+    try {
+      await set(ref(db, "settings/show"), nextSettings);
+      setMessage("Display show controls updated.");
+    } catch {
+      setMessage("Could not update show controls. Check database rules.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function growRays() {
+    await saveShowSettings({
+      ...draftShowSettings,
+      raysVisible: true,
+      namesVisible: false,
+      revealStartedAt: 0,
+    });
+  }
+
+  async function showNames() {
+    await saveShowSettings({
+      ...draftShowSettings,
+      raysVisible: true,
+      namesVisible: true,
+      revealStartedAt: Date.now(),
+    });
+  }
+
+  async function resetDisplayShow() {
+    await saveShowSettings({
+      ...draftShowSettings,
+      raysVisible: false,
+      namesVisible: false,
+      revealStartedAt: 0,
+    });
   }
 
   return (
@@ -910,6 +1009,66 @@ function AdminPage() {
                 </div>
               </label>
             ))}
+          </div>
+        </div>
+
+        <div className="mb-5 rounded-lg border border-[#c6d49f] bg-white p-4 shadow-glow">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-black">Display Show Controls</h2>
+              <p className="text-sm font-bold text-[#60704a]">Start with an empty display, grow rays, then reveal names in batches.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => saveShowSettings(draftShowSettings)}
+              disabled={busyId === "show-settings"}
+              className="admin-button bg-[#173b27] text-white hover:bg-[#22583a]"
+            >
+              Save Timing
+            </button>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <label className="admin-field">
+              <span>Ray grow duration seconds</span>
+              <input
+                type="number"
+                min="1"
+                value={draftShowSettings.rayDuration}
+                onChange={(event) => setDraftShowSettings((settings) => ({ ...settings, rayDuration: Number(event.target.value) }))}
+              />
+            </label>
+            <label className="admin-field">
+              <span>Names per batch</span>
+              <input
+                type="number"
+                min="1"
+                value={draftShowSettings.namesPerBatch}
+                onChange={(event) => setDraftShowSettings((settings) => ({ ...settings, namesPerBatch: Number(event.target.value) }))}
+              />
+            </label>
+            <label className="admin-field">
+              <span>Batch interval seconds</span>
+              <input
+                type="number"
+                min="0.1"
+                step="0.1"
+                value={draftShowSettings.nameBatchSeconds}
+                onChange={(event) => setDraftShowSettings((settings) => ({ ...settings, nameBatchSeconds: Number(event.target.value) }))}
+              />
+            </label>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" onClick={resetDisplayShow} className="admin-button border border-[#c6d49f] bg-white text-[#173b27] hover:bg-[#f8fbf3]">
+              Reset Empty
+            </button>
+            <button type="button" onClick={growRays} className="admin-button bg-[#173b27] text-white hover:bg-[#22583a]">
+              Grow Tree Rays
+            </button>
+            <button type="button" onClick={showNames} className="admin-button bg-[#00a99d] text-white hover:bg-[#008f85]">
+              Show Names
+            </button>
           </div>
         </div>
 
@@ -1024,10 +1183,10 @@ function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, visualSettings = 
       style={{ cursor: canDrag ? "grab" : "default" }}
     >
       <motion.g
-        initial={{ opacity: 0, scale: 0 }}
-        animate={{ opacity: 1, scale: isNewest ? 1.18 : 1 }}
+        initial={{ opacity: 0, scale: 0.8, y: -TREE_HEIGHT }}
+        animate={{ opacity: 1, scale: isNewest ? 1.18 : 1, y: 0 }}
         exit={{ opacity: 0, scale: 0 }}
-        transition={{ type: "spring", stiffness: 130, damping: 16 }}
+        transition={{ type: "spring", stiffness: 80, damping: 18, mass: 0.9 }}
       >
         <motion.path
           d="M-6,-18 C17,-18 36,-4 42,16 C18,22 -9,18 -34,-3 C-27,-12 -18,-17 -6,-18 Z"
@@ -1046,7 +1205,7 @@ function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, visualSettings = 
   );
 }
 
-function DigitalTreeSvg({ nodes = [], shapePoints = [], showShapeGuide = false, visualSettings = DEFAULT_VISUAL_SETTINGS }) {
+function DigitalTreeSvg({ nodes = [], shapePoints = [], showShapeGuide = false, visualSettings = DEFAULT_VISUAL_SETTINGS, showRays = true, rayDuration = 10 }) {
   const canopyPath = shapePointsToPath(shapePoints);
   const root = { x: 604, y: 700 };
   const neck = { x: 605, y: 450 };
@@ -1090,11 +1249,24 @@ function DigitalTreeSvg({ nodes = [], shapePoints = [], showShapeGuide = false, 
           strokeWidth="4"
         />
       )}
-      <ellipse cx="610" cy="720" rx="260" ry="20" fill={primary} opacity="0.08" />
+      <ellipse cx="610" cy="720" rx="260" ry="20" fill={primary} opacity={showRays ? 0.08 : 0} />
       <g filter="url(#cyan-glow)">
-        <path d="M582,708 C566,604 578,520 602,440 C626,520 634,604 626,708" fill="none" stroke={primary} strokeWidth="3.2" opacity="0.82" />
-        <path d="M604,708 C594,612 598,526 606,438 C617,526 622,612 616,708" fill="none" stroke={accent} strokeWidth="2.2" opacity="0.95" />
-        <path d="M628,708 C662,602 646,520 610,438" fill="none" stroke={secondary} strokeWidth="2.2" opacity="0.74" />
+        {[
+          { d: "M582,708 C566,604 578,520 602,440 C626,520 634,604 626,708", stroke: primary, width: 3.2, opacity: 0.82 },
+          { d: "M604,708 C594,612 598,526 606,438 C617,526 622,612 616,708", stroke: accent, width: 2.2, opacity: 0.95 },
+          { d: "M628,708 C662,602 646,520 610,438", stroke: secondary, width: 2.2, opacity: 0.74 },
+        ].map((line) => (
+          <motion.path
+            key={line.d}
+            d={line.d}
+            fill="none"
+            stroke={line.stroke}
+            strokeWidth={line.width}
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: showRays ? 1 : 0, opacity: showRays ? line.opacity : 0 }}
+            transition={{ duration: rayDuration, ease: "easeInOut" }}
+          />
+        ))}
         {nodes.map((node, index) => {
           const sidePull = node.x < neck.x ? -80 : 80;
           const midY = Math.min(500, Math.max(245, node.y + 120));
@@ -1109,8 +1281,8 @@ function DigitalTreeSvg({ nodes = [], shapePoints = [], showShapeGuide = false, 
               strokeWidth={index % 5 === 0 ? 2.2 : 1.35}
               strokeOpacity="0.56"
               initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: 0.56 }}
-              transition={{ duration: 1.1, delay: Math.min(index * 0.012, 0.9) }}
+              animate={{ pathLength: showRays ? 1 : 0, opacity: showRays ? 0.56 : 0 }}
+              transition={{ duration: rayDuration, delay: Math.min(index * 0.01, 0.7), ease: "easeInOut" }}
             />
           );
         })}
