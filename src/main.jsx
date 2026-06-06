@@ -563,11 +563,11 @@ function SubmitPage() {
 
         <form onSubmit={handleSubmit} className="rounded-lg border border-white/20 bg-white/10 p-5 shadow-glow backdrop-blur">
           <div className="flex flex-col md:flex-row md:items-center gap-4">
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
               <label className="whitespace-nowrap text-xl md:text-2xl font-black text-white shrink-0" htmlFor="name">
                 # I
               </label>
-              <div className="w-[180px] md:w-[220px] shrink-0">
+              <div className="flex-1 md:flex-none md:w-[260px]">
                 <input
                   id="name"
                   maxLength={20}
