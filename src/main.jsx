@@ -1208,8 +1208,33 @@ function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, visualSettings = 
   const textSize = Math.max(5.2, Math.min(9.2, 11.8 - name.length * 0.32));
   const nodeColor = getNodeColor(visualSettings, leafItem.id);
   const fallSeed = hashText(`${leafItem.id || name}-fall`);
-  const drift = ((fallSeed % 120) - 60) * 2.2;
-  const fallSpin = (fallSeed % 2 === 0 ? 1 : -1) * (18 + (fallSeed % 18));
+  const windDirection = fallSeed % 2 === 0 ? 1 : -1;
+  const windAmplitude = 34 + (fallSeed % 64);
+  const startDrift = windDirection * (120 + (fallSeed % 180));
+  const fallDuration = 3.4 + (fallSeed % 11) * 0.18;
+  const fallDelay = (fallSeed % 8) * 0.04;
+  const rotationDirection = fallSeed % 3 === 0 ? -1 : 1;
+  const rotationAmount = rotationDirection * (130 + (fallSeed % 150));
+  const swayX = [
+    startDrift,
+    startDrift - windDirection * windAmplitude * 0.8,
+    startDrift + windDirection * windAmplitude * 0.7,
+    startDrift - windDirection * windAmplitude * 0.55,
+    windDirection * windAmplitude * 0.3,
+    -windDirection * windAmplitude * 0.16,
+    0,
+  ];
+  const fallY = [-TREE_HEIGHT - (fallSeed % 160), -690, -520, -340, -170, -48, 0];
+  const fallRotate = [
+    rotationAmount * -0.65,
+    rotationAmount * 0.2,
+    rotationAmount * -0.35,
+    rotationAmount * 0.55,
+    rotationAmount * -0.16,
+    rotationAmount * 0.08,
+    0,
+  ];
+  const fallTimes = [0, 0.18, 0.36, 0.56, 0.76, 0.92, 1];
 
   return (
     <g
@@ -1218,19 +1243,21 @@ function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, visualSettings = 
       style={{ cursor: canDrag ? "grab" : "default" }}
     >
       <motion.g
-        initial={{ opacity: 0, scale: 0.74, x: drift, y: -TREE_HEIGHT, rotate: -fallSpin }}
+        initial={{ opacity: 0, scale: 0.72, x: startDrift, y: fallY[0], rotate: fallRotate[0] }}
         animate={{
           opacity: 1,
           scale: isNewest ? 1.18 : 1,
-          x: [drift, drift * -0.35, drift * 0.18, 0],
-          y: [-TREE_HEIGHT, -430, -150, 0],
-          rotate: [-fallSpin, fallSpin * 0.45, fallSpin * -0.2, 0],
+          x: swayX,
+          y: fallY,
+          rotate: fallRotate,
         }}
         exit={{ opacity: 0, scale: 0 }}
         transition={{
-          duration: 2.2 + (fallSeed % 7) * 0.12,
-          ease: [0.2, 0.72, 0.22, 1],
-          times: [0, 0.42, 0.76, 1],
+          opacity: { duration: 0.5, delay: fallDelay },
+          scale: { duration: fallDuration, delay: fallDelay, ease: "easeOut" },
+          x: { duration: fallDuration, delay: fallDelay, ease: "easeInOut", times: fallTimes },
+          y: { duration: fallDuration, delay: fallDelay, ease: [0.18, 0.02, 0.18, 1], times: fallTimes },
+          rotate: { duration: fallDuration, delay: fallDelay, ease: "linear", times: fallTimes },
         }}
       >
         <motion.path
