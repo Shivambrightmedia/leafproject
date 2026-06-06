@@ -588,7 +588,11 @@ function DisplayPage() {
 
   const activeShape = draftPoints.length > 2 ? draftPoints : shapePoints;
   const visibleCount = useTimedVisibleCount(leaves.length, showSettings);
-  const visibleLeaves = showSettings.namesVisible ? leaves.slice(0, visibleCount) : [];
+  
+  const visibleLeaves = useMemo(
+    () => showSettings.namesVisible ? leaves.slice(0, visibleCount) : [],
+    [showSettings.namesVisible, leaves, visibleCount]
+  );
 
   const arrangedLeaves = useMemo(() => {
     const arranged = arrangeLeaves(visibleLeaves, shapePoints);
@@ -601,6 +605,8 @@ function DisplayPage() {
   }, [draggedLeafId, draggedLeafPosition, visibleLeaves, shapePoints]);
   const rayLeaves = useMemo(() => arrangeLeaves(leaves, shapePoints), [leaves, shapePoints]);
   const newestLeaf = arrangedLeaves.find((leafItem) => leafItem.id === newestId) || arrangedLeaves.at(-1);
+
+  console.log(`[Debug] DisplayPage Render | Total: ${leaves.length} | Visible: ${visibleCount} | RayLeaves: ${rayLeaves.length} | Newest: ${newestId}`);
 
   useEffect(() => {
     const currentIds = new Set(leaves.map((leafItem) => leafItem.id));
@@ -1206,7 +1212,7 @@ function arrangeLeaves(leaves, shapePoints = []) {
   });
 }
 
-function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, visualSettings = DEFAULT_VISUAL_SETTINGS, onPointerDown }) {
+const WishLeaf = React.memo(function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, visualSettings = DEFAULT_VISUAL_SETTINGS, onPointerDown }) {
   const name = String(leafItem.name || "");
   const textSize = Math.max(5.2, Math.min(9.2, 11.8 - name.length * 0.32));
   const nodeColor = getNodeColor(visualSettings, leafItem.id);
@@ -1294,9 +1300,10 @@ function WishLeaf({ leaf: leafItem, isNewest, canDrag = false, visualSettings = 
       </motion.g>
     </g>
   );
-}
+}, (prev, next) => prev.leaf.id === next.leaf.id && prev.leaf.x === next.leaf.x && prev.leaf.y === next.leaf.y && prev.isNewest === next.isNewest && prev.canDrag === next.canDrag);
 
-function DigitalTreeSvg({ nodes = [], shapePoints = [], showShapeGuide = false, visualSettings = DEFAULT_VISUAL_SETTINGS, showRays = true, rayDuration = 10 }) {
+const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoints = [], showShapeGuide = false, visualSettings = DEFAULT_VISUAL_SETTINGS, showRays = true, rayDuration = 10 }) {
+  console.log(`[Debug] DigitalTreeSvg Render | Nodes: ${nodes?.length}`);
   const canopyPath = shapePointsToPath(shapePoints);
   const root = { x: 604, y: 700 };
   const neck = { x: 605, y: 450 };
@@ -1358,6 +1365,8 @@ function DigitalTreeSvg({ nodes = [], shapePoints = [], showShapeGuide = false, 
             transition={{ duration: rayDuration, ease: "easeInOut" }}
           />
         ))}
+      </g>
+      <g>
         {nodes.map((node, index) => {
           const sidePull = node.x < neck.x ? -80 : 80;
           const midY = Math.min(500, Math.max(245, node.y + 120));
@@ -1380,7 +1389,7 @@ function DigitalTreeSvg({ nodes = [], shapePoints = [], showShapeGuide = false, 
       </g>
     </g>
   );
-}
+});
 
 createRoot(document.getElementById("root")).render(
   <ErrorBoundary>
