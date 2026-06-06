@@ -534,8 +534,10 @@ function SubmitPage() {
     return (
       <main className="submit-shell">
         <section className="thank-you-panel">
-          <Trees size={42} />
-          <h1>Thank you</h1>
+          <div className="mx-auto mb-4 grid size-20 shrink-0 place-items-center rounded-full bg-[#009999] text-white shadow-glow">
+            <Trees size={42} />
+          </div>
+          <h1>Thank You</h1>
           <p>Your sapling has been planted! Thank you for joining the Digital Tree Plantation.</p>
           {appSettings.allowMultipleSubmissions && (
             <button
