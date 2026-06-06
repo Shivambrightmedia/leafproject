@@ -1404,8 +1404,14 @@ const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoi
             stroke={line.stroke}
             strokeWidth={line.width}
             initial={{ pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: showRays ? 1 : 0, opacity: showRays ? line.opacity : 0 }}
-            transition={{ duration: rayDuration, ease: "easeInOut" }}
+            animate={{ 
+              pathLength: showRays ? 1 : 0, 
+              opacity: showRays ? [line.opacity * 0.5, line.opacity, line.opacity * 0.5] : 0 
+            }}
+            transition={{ 
+              pathLength: { duration: rayDuration, ease: "easeInOut" },
+              opacity: showRays ? { duration: 2, repeat: Infinity, ease: "easeInOut" } : { duration: 0.5 }
+            }}
           />
         ))}
       </g>
@@ -1424,8 +1430,14 @@ const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoi
               strokeWidth={index % 5 === 0 ? 2.2 : 1.35}
               strokeOpacity="0.56"
               initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: showRays ? 1 : 0, opacity: showRays ? 0.56 : 0 }}
-              transition={{ duration: rayDuration, delay: Math.min(index * 0.01, 0.7), ease: "easeInOut" }}
+              animate={{ 
+                pathLength: showRays ? 1 : 0, 
+                opacity: showRays ? [0.3, 0.7, 0.3] : 0 
+              }}
+              transition={{ 
+                pathLength: { duration: rayDuration, delay: Math.min(index * 0.01, 0.7), ease: "easeInOut" },
+                opacity: showRays ? { duration: 3, delay: Math.min(index * 0.01, 0.7), repeat: Infinity, ease: "easeInOut" } : { duration: 0.5 }
+              }}
             />
           );
         })}
