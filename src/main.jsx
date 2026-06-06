@@ -884,11 +884,7 @@ function ViewPage() {
     if (!leafItem || leafItem.id !== highlightedId) return;
     const encodedName = encodeURIComponent(leafItem.name.trim().toLowerCase());
     const url = `https://res.cloudinary.com/${CLOUDINARY_CLOUD}/image/upload/${encodedName}`;
-    setImageLoading(true);
-    const img = new Image();
-    img.onload = () => { setImageUrl(url); setImageLoading(false); };
-    img.onerror = () => { setImageLoading(false); };
-    img.src = url;
+    window.open(url, "_blank");
   }
 
   function closeImage() {
