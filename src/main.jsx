@@ -1,7 +1,7 @@
 import React, { Component, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { motion, AnimatePresence } from "framer-motion";
-import { Leaf, RefreshCw, Send, Sparkles, Trash2, Trees } from "lucide-react";
+import { Leaf, RefreshCw, Search, Send, Sparkles, Trash2, Trees } from "lucide-react";
 import {
   onValue,
   push,
@@ -475,6 +475,7 @@ function App() {
   const path = window.location.pathname;
   if (path === "/admin") return <AdminPage />;
   if (path === "/display") return <DisplayPage />;
+  if (path === "/view") return <ViewPage />;
   return <SubmitPage />;
 }
 
@@ -838,6 +839,122 @@ function DisplayPage() {
           ))}
         </AnimatePresence>
       </svg>
+    </main>
+  );
+}
+
+function ViewPage() {
+  const { leaves, status } = useLeaves();
+  const shapePoints = useCanopyShape();
+  const visualSettings = useVisualSettings();
+  const showSettings = useShowSettings();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [highlightedId, setHighlightedId] = useState(null);
+  const [searchError, setSearchError] = useState("");
+
+  const arrangedLeaves = useMemo(() => arrangeLeaves(leaves, shapePoints), [leaves, shapePoints]);
+  const rayLeaves = arrangedLeaves;
+
+  function handleSearch(event) {
+    event.preventDefault();
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return;
+    setSearchError("");
+    const found = arrangedLeaves.find((l) => l.name?.toLowerCase() === query);
+    if (found) {
+      setHighlightedId(found.id);
+    } else {
+      setHighlightedId(null);
+      setSearchError("Name not found on the tree.");
+    }
+  }
+
+  function clearSearch() {
+    setHighlightedId(null);
+    setSearchQuery("");
+    setSearchError("");
+  }
+
+  const viewBox = useMemo(() => {
+    if (!highlightedId) return `0 0 ${TREE_WIDTH} ${TREE_HEIGHT}`;
+    const leaf = arrangedLeaves.find((l) => l.id === highlightedId);
+    if (!leaf) return `0 0 ${TREE_WIDTH} ${TREE_HEIGHT}`;
+    const zoomW = 400;
+    const zoomH = 300;
+    const cx = Math.max(0, Math.min(TREE_WIDTH - zoomW, leaf.x - zoomW / 2));
+    const cy = Math.max(0, Math.min(TREE_HEIGHT - zoomH, leaf.y - zoomH / 2));
+    return `${cx} ${cy} ${zoomW} ${zoomH}`;
+  }, [highlightedId, arrangedLeaves]);
+
+  return (
+    <main className="display-shell">
+      <div className="display-hud">
+        <div>
+          <h1 className="text-4xl font-black leading-none">{leaves.length} trees</h1>
+        </div>
+        <form onSubmit={handleSearch} className="view-search-bar">
+          <Search size={18} />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setSearchError(""); }}
+            placeholder="Search name..."
+            className="view-search-input"
+          />
+          <button type="submit" className="view-search-btn">Go</button>
+          {highlightedId && (
+            <button type="button" onClick={clearSearch} className="view-search-btn" style={{ background: "rgba(255,255,255,0.15)" }}>✕</button>
+          )}
+        </form>
+      </div>
+      {searchError && (
+        <div className="view-search-error">{searchError}</div>
+      )}
+
+      <motion.svg
+        className="tree-stage"
+        animate={{ viewBox }}
+        transition={{ duration: 0.8, ease: "easeInOut" }}
+        role="img"
+        aria-label="Digital wish tree"
+      >
+        <DigitalTreeSvg
+          nodes={rayLeaves}
+          shapePoints={shapePoints}
+          visualSettings={visualSettings}
+          showRays={showSettings.raysVisible}
+          rayDuration={Number(showSettings.rayDuration) || 10}
+          pulseIntensity={Number(showSettings.pulseIntensity) ?? 1}
+        />
+        <AnimatePresence>
+          {arrangedLeaves.map((leafItem) => (
+            <WishLeaf
+              key={leafItem.id}
+              leaf={leafItem}
+              isNewest={leafItem.id === highlightedId}
+              canDrag={false}
+              visualSettings={visualSettings}
+            />
+          ))}
+        </AnimatePresence>
+        {highlightedId && (() => {
+          const hl = arrangedLeaves.find((l) => l.id === highlightedId);
+          if (!hl) return null;
+          return (
+            <motion.circle
+              cx={hl.x}
+              cy={hl.y}
+              r="50"
+              fill="none"
+              stroke={visualSettings.primaryColor}
+              strokeWidth="3"
+              initial={{ opacity: 0, r: 20 }}
+              animate={{ opacity: [0.8, 0.3, 0.8], r: [30, 50, 30] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            />
+          );
+        })()}
+      </motion.svg>
     </main>
   );
 }
