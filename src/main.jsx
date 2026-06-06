@@ -23,6 +23,10 @@ const DEFAULT_VISUAL_SETTINGS = {
   secondaryColor: "#21c8d7",
   accentColor: "#9ffbff",
 };
+const DEFAULT_APP_SETTINGS = {
+  allowMultipleSubmissions: false,
+};
+const SUBMISSION_STORAGE_KEY = "siemens-event-submitted";
 
 const CANOPY_CENTER = { x: 610, y: 285 };
 const CANOPY_RADIUS = { x: 465, y: 255 };
@@ -329,6 +333,23 @@ function useVisualSettings() {
   return visualSettings;
 }
 
+function useAppSettings() {
+  const [appSettings, setAppSettings] = useState(DEFAULT_APP_SETTINGS);
+
+  useEffect(() => {
+    if (!firebaseReady) return undefined;
+
+    return onValue(ref(db, "settings/app"), (snapshot) => {
+      setAppSettings({
+        ...DEFAULT_APP_SETTINGS,
+        ...(snapshot.val() || {}),
+      });
+    });
+  }, []);
+
+  return appSettings;
+}
+
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -373,15 +394,24 @@ function App() {
 
 function SubmitPage() {
   const { leaves, status } = useLeaves();
+  const appSettings = useAppSettings();
   const [name, setName] = useState("");
   const [error, setError] = useState("");
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState(() => localStorage.getItem(SUBMISSION_STORAGE_KEY) === "true");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (appSettings.allowMultipleSubmissions) setSent(false);
+  }, [appSettings.allowMultipleSubmissions]);
 
   async function handleSubmit(event) {
     event.preventDefault();
     const cleanName = name.trim().replace(/\s+/g, " ");
 
+    if (!appSettings.allowMultipleSubmissions && localStorage.getItem(SUBMISSION_STORAGE_KEY) === "true") {
+      setSent(true);
+      return;
+    }
     if (!cleanName) {
       setError("Name is required.");
       return;
@@ -407,8 +437,8 @@ function SubmitPage() {
         ...placement,
       });
       setName("");
+      localStorage.setItem(SUBMISSION_STORAGE_KEY, "true");
       setSent(true);
-      window.setTimeout(() => setSent(false), 2600);
     } catch {
       setError("Could not send your wish. Try again.");
     } finally {
@@ -416,19 +446,30 @@ function SubmitPage() {
     }
   }
 
+  if (sent && !appSettings.allowMultipleSubmissions) {
+    return (
+      <main className="submit-shell">
+        <section className="thank-you-panel">
+          <Trees size={42} />
+          <h1>Thank you</h1>
+        </section>
+      </main>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-[#f5f0e6] text-[#173b27]">
+    <main className="submit-shell">
       <section className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 py-8">
         <div className="mb-8 flex items-center gap-3">
-          <div className="grid size-12 place-items-center rounded-full bg-[#173b27] text-white shadow-glow">
+          <div className="grid size-12 place-items-center rounded-full bg-white/10 text-white shadow-glow">
             <Trees size={26} />
           </div>
-          <h1 className="text-3xl font-black leading-tight">Trees</h1>
+          <h1 className="text-3xl font-black leading-tight text-white">Siemens Event</h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="rounded-lg border border-[#d6c8a7] bg-white/78 p-5 shadow-glow backdrop-blur">
-          <label className="mb-2 block text-sm font-bold" htmlFor="name">
-            Your name
+        <form onSubmit={handleSubmit} className="rounded-lg border border-white/20 bg-white/10 p-5 shadow-glow backdrop-blur">
+          <label className="mb-2 block text-sm font-bold text-white" htmlFor="name">
+            # I______
           </label>
           <input
             id="name"
@@ -438,16 +479,16 @@ function SubmitPage() {
               setName(event.target.value);
               setError("");
             }}
-            className="h-14 w-full rounded-md border border-[#b8c08c] bg-white px-4 text-lg font-semibold outline-none transition focus:border-[#2f8f46] focus:ring-4 focus:ring-[#a7c957]/25"
+            className="h-14 w-full rounded-md border border-white/30 bg-white px-4 text-lg font-semibold text-[#000028] outline-none transition focus:border-[#00e6dc] focus:ring-4 focus:ring-[#00e6dc]/25"
             placeholder="Enter name"
             autoComplete="name"
           />
-          <div className="mt-2 flex justify-between text-xs font-semibold text-[#6f765f]">
+          <div className="mt-2 flex justify-between text-xs font-semibold text-white/75">
             <span>{error || (status === "connected" ? "Ready to grow a tree." : "Connecting...")}</span>
             <span>{name.trim().length}/20</span>
           </div>
           <button
-            className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-md bg-[#173b27] px-5 text-base font-black text-white transition hover:bg-[#22583a] disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-md bg-[#00e6dc] px-5 text-base font-black text-[#000028] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
             type="submit"
             disabled={busy}
           >
@@ -457,12 +498,12 @@ function SubmitPage() {
         </form>
 
         <AnimatePresence>
-          {sent && (
+          {sent && appSettings.allowMultipleSubmissions && (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 12 }}
-              className="mt-5 flex items-center gap-2 rounded-md bg-[#dce9b4] px-4 py-3 text-sm font-bold"
+              className="mt-5 flex items-center gap-2 rounded-md bg-white/12 px-4 py-3 text-sm font-bold text-white"
             >
               <Sparkles size={17} />
               Your tree is now live.
@@ -681,13 +722,19 @@ function AdminPage() {
   const { leaves, status } = useLeaves();
   const shapePoints = useCanopyShape();
   const visualSettings = useVisualSettings();
+  const appSettings = useAppSettings();
   const [busyId, setBusyId] = useState("");
   const [message, setMessage] = useState("");
   const [draftVisualSettings, setDraftVisualSettings] = useState(DEFAULT_VISUAL_SETTINGS);
+  const [draftAppSettings, setDraftAppSettings] = useState(DEFAULT_APP_SETTINGS);
 
   useEffect(() => {
     setDraftVisualSettings(visualSettings);
   }, [visualSettings]);
+
+  useEffect(() => {
+    setDraftAppSettings(appSettings);
+  }, [appSettings]);
 
   async function deleteLeaf(id) {
     if (!firebaseReady) return;
@@ -753,6 +800,21 @@ function AdminPage() {
       setMessage("Glow colors updated.");
     } catch {
       setMessage("Could not update colors. Check database rules.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function saveAppSettings() {
+    if (!firebaseReady) return;
+    setBusyId("app-settings");
+    setMessage("");
+
+    try {
+      await set(ref(db, "settings/app"), draftAppSettings);
+      setMessage("Submission settings updated.");
+    } catch {
+      setMessage("Could not update submission settings. Check database rules.");
     } finally {
       setBusyId("");
     }
@@ -849,6 +911,35 @@ function AdminPage() {
               </label>
             ))}
           </div>
+        </div>
+
+        <div className="mb-5 rounded-lg border border-[#c6d49f] bg-white p-4 shadow-glow">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-black">Submission Control</h2>
+              <p className="text-sm font-bold text-[#60704a]">Choose whether one phone can submit once or multiple times.</p>
+            </div>
+            <button
+              type="button"
+              onClick={saveAppSettings}
+              disabled={busyId === "app-settings"}
+              className="admin-button bg-[#173b27] text-white hover:bg-[#22583a]"
+            >
+              {busyId === "app-settings" ? "Saving" : "Save Settings"}
+            </button>
+          </div>
+          <label className="flex items-center gap-3 text-sm font-black">
+            <input
+              type="checkbox"
+              checked={draftAppSettings.allowMultipleSubmissions}
+              onChange={(event) => setDraftAppSettings((settings) => ({
+                ...settings,
+                allowMultipleSubmissions: event.target.checked,
+              }))}
+              className="size-5"
+            />
+            Allow multiple submissions from same phone
+          </label>
         </div>
 
         <div className="overflow-hidden rounded-lg border border-[#c6d49f] bg-white shadow-glow">
@@ -982,7 +1073,7 @@ function DigitalTreeSvg({ nodes = [], shapePoints = [], showShapeGuide = false, 
           <path d={canopyPath} />
         </clipPath>
       </defs>
-      <rect x="0" y="0" width={TREE_WIDTH} height={TREE_HEIGHT} fill="url(#digital-bg-glow)" />
+      <rect x="0" y="0" width={TREE_WIDTH} height={TREE_HEIGHT} fill="#000028" />
       <g opacity="0.18">
         {Array.from({ length: 90 }).map((_, index) => {
           const x = (hashText(`star-x-${index}`) % TREE_WIDTH);
