@@ -555,7 +555,7 @@ function SubmitPage() {
     <main className="submit-shell">
       <section className="mx-auto flex min-h-screen w-full max-w-4xl flex-col justify-center px-5 py-8">
         <div className="mb-8 flex items-center gap-3">
-          <div className="grid size-12 shrink-0 place-items-center rounded-full bg-white/10 text-white shadow-glow">
+          <div className="grid size-12 shrink-0 place-items-center rounded-full bg-[#009999] text-white shadow-glow">
             <Trees size={26} />
           </div>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-black leading-tight text-white whitespace-nowrap">The Digital Tree Plantation</h1>
