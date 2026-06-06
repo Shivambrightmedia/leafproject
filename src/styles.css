@@ -213,6 +213,11 @@ body {
   }
 }
 
+.view-search-wrapper {
+  position: relative;
+  pointer-events: all;
+}
+
 .view-search-bar {
   display: flex;
   align-items: center;
@@ -224,7 +229,6 @@ body {
   backdrop-filter: blur(10px);
   box-shadow: 0 18px 60px rgba(89, 241, 255, 0.18);
   color: #dcfeff;
-  pointer-events: all;
 }
 
 .view-search-input {
@@ -258,17 +262,39 @@ body {
   background: #00b3b3;
 }
 
-.view-search-error {
+.view-suggestions {
   position: absolute;
-  z-index: 3;
-  top: 80px;
-  right: 34px;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 6px;
   border-radius: 8px;
-  background: rgba(255, 80, 80, 0.85);
-  padding: 10px 18px;
-  color: #fff;
-  font-size: 14px;
+  background: rgba(3, 25, 32, 0.92);
+  border: 1px solid rgba(89, 241, 255, 0.2);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  z-index: 10;
+}
+
+.view-suggestion-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: #dcfeff;
+  font-size: 15px;
   font-weight: 800;
-  backdrop-filter: blur(10px);
-  pointer-events: none;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.view-suggestion-item:hover {
+  background: rgba(89, 241, 255, 0.12);
+}
+
+.view-suggestion-item + .view-suggestion-item {
+  border-top: 1px solid rgba(89, 241, 255, 0.08);
 }

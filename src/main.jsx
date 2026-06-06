@@ -850,40 +850,39 @@ function ViewPage() {
   const showSettings = useShowSettings();
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedId, setHighlightedId] = useState(null);
-  const [searchError, setSearchError] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const arrangedLeaves = useMemo(() => arrangeLeaves(leaves, shapePoints), [leaves, shapePoints]);
   const rayLeaves = arrangedLeaves;
 
-  function handleSearch(event) {
-    event.preventDefault();
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return;
-    setSearchError("");
-    const found = arrangedLeaves.find((l) => l.name?.toLowerCase() === query);
-    if (found) {
-      setHighlightedId(found.id);
-    } else {
-      setHighlightedId(null);
-      setSearchError("Name not found on the tree.");
-    }
+  const CENTER_TARGET = { x: 610, y: 280 };
+
+  const suggestions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return arrangedLeaves.filter((l) => l.name?.toLowerCase().includes(q)).slice(0, 8);
+  }, [searchQuery, arrangedLeaves]);
+
+  function selectLeaf(leafItem) {
+    setHighlightedId(leafItem.id);
+    setSearchQuery(leafItem.name);
+    setShowSuggestions(false);
   }
 
   function clearSearch() {
     setHighlightedId(null);
     setSearchQuery("");
-    setSearchError("");
+    setShowSuggestions(false);
   }
 
-  const viewBox = useMemo(() => {
-    if (!highlightedId) return `0 0 ${TREE_WIDTH} ${TREE_HEIGHT}`;
-    const leaf = arrangedLeaves.find((l) => l.id === highlightedId);
-    if (!leaf) return `0 0 ${TREE_WIDTH} ${TREE_HEIGHT}`;
-    const zoomW = 400;
-    const zoomH = 300;
-    const cx = Math.max(0, Math.min(TREE_WIDTH - zoomW, leaf.x - zoomW / 2));
-    const cy = Math.max(0, Math.min(TREE_HEIGHT - zoomH, leaf.y - zoomH / 2));
-    return `${cx} ${cy} ${zoomW} ${zoomH}`;
+  // Override leaf positions: move highlighted leaf to center
+  const displayLeaves = useMemo(() => {
+    if (!highlightedId) return arrangedLeaves;
+    return arrangedLeaves.map((l) =>
+      l.id === highlightedId
+        ? { ...l, x: CENTER_TARGET.x, y: CENTER_TARGET.y, rotate: 0 }
+        : l
+    );
   }, [highlightedId, arrangedLeaves]);
 
   return (
@@ -892,29 +891,41 @@ function ViewPage() {
         <div>
           <h1 className="text-4xl font-black leading-none">{leaves.length} trees</h1>
         </div>
-        <form onSubmit={handleSearch} className="view-search-bar">
-          <Search size={18} />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setSearchError(""); }}
-            placeholder="Search name..."
-            className="view-search-input"
-          />
-          <button type="submit" className="view-search-btn">Go</button>
-          {highlightedId && (
-            <button type="button" onClick={clearSearch} className="view-search-btn" style={{ background: "rgba(255,255,255,0.15)" }}>✕</button>
+        <div className="view-search-wrapper">
+          <div className="view-search-bar">
+            <Search size={18} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setShowSuggestions(true); setHighlightedId(null); }}
+              onFocus={() => setShowSuggestions(true)}
+              placeholder="Search name..."
+              className="view-search-input"
+            />
+            {highlightedId && (
+              <button type="button" onClick={clearSearch} className="view-search-btn" style={{ background: "rgba(255,255,255,0.15)" }}>✕</button>
+            )}
+          </div>
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="view-suggestions">
+              {suggestions.map((l) => (
+                <button
+                  key={l.id}
+                  type="button"
+                  className="view-suggestion-item"
+                  onClick={() => selectLeaf(l)}
+                >
+                  {l.name}
+                </button>
+              ))}
+            </div>
           )}
-        </form>
+        </div>
       </div>
-      {searchError && (
-        <div className="view-search-error">{searchError}</div>
-      )}
 
-      <motion.svg
+      <svg
         className="tree-stage"
-        animate={{ viewBox }}
-        transition={{ duration: 0.8, ease: "easeInOut" }}
+        viewBox={`0 0 ${TREE_WIDTH} ${TREE_HEIGHT}`}
         role="img"
         aria-label="Digital wish tree"
       >
@@ -926,38 +937,73 @@ function ViewPage() {
           rayDuration={Number(showSettings.rayDuration) || 10}
           pulseIntensity={Number(showSettings.pulseIntensity) ?? 1}
         />
-        <AnimatePresence>
-          {arrangedLeaves.map((leafItem) => (
-            <WishLeaf
-              key={leafItem.id}
-              leaf={leafItem}
-              isNewest={leafItem.id === highlightedId}
-              canDrag={false}
-              visualSettings={visualSettings}
-            />
-          ))}
-        </AnimatePresence>
+        {displayLeaves.map((leafItem) => (
+          <ViewLeaf
+            key={leafItem.id}
+            leaf={leafItem}
+            isHighlighted={leafItem.id === highlightedId}
+            visualSettings={visualSettings}
+          />
+        ))}
         {highlightedId && (() => {
-          const hl = arrangedLeaves.find((l) => l.id === highlightedId);
-          if (!hl) return null;
           return (
             <motion.circle
-              cx={hl.x}
-              cy={hl.y}
-              r="50"
+              cx={CENTER_TARGET.x}
+              cy={CENTER_TARGET.y}
               fill="none"
               stroke={visualSettings.primaryColor}
               strokeWidth="3"
               initial={{ opacity: 0, r: 20 }}
-              animate={{ opacity: [0.8, 0.3, 0.8], r: [30, 50, 30] }}
+              animate={{ opacity: [0.8, 0.3, 0.8], r: [30, 55, 30] }}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
             />
           );
         })()}
-      </motion.svg>
+      </svg>
     </main>
   );
 }
+
+const ViewLeaf = React.memo(function ViewLeaf({ leaf: leafItem, isHighlighted, visualSettings = DEFAULT_VISUAL_SETTINGS }) {
+  const name = String(leafItem.name || "");
+  const textSize = Math.max(5.2, Math.min(9.2, 11.8 - name.length * 0.32));
+  const nodeColor = getNodeColor(visualSettings, leafItem.id);
+
+  return (
+    <motion.g
+      animate={{
+        x: leafItem.x,
+        y: leafItem.y,
+        rotate: leafItem.rotate || 0,
+        scale: isHighlighted ? 1.5 : 1,
+      }}
+      transition={{ duration: 0.8, ease: "easeInOut" }}
+    >
+      <path
+        d="M-6,-18 C17,-18 36,-4 42,16 C18,22 -9,18 -34,-3 C-27,-12 -18,-17 -6,-18 Z"
+        fill={rgba(nodeColor, 0.3)}
+        stroke={nodeColor}
+        strokeWidth="2.4"
+      />
+      {isHighlighted && (
+        <motion.path
+          d="M-6,-18 C17,-18 36,-4 42,16 C18,22 -9,18 -34,-3 C-27,-12 -18,-17 -6,-18 Z"
+          fill="none"
+          stroke={nodeColor}
+          strokeWidth="3.6"
+          initial={{ opacity: 0.7, scale: 1 }}
+          animate={{ opacity: [0.7, 0], scale: [1, 1.34] }}
+          transition={{ duration: 1.4, repeat: Infinity, ease: "easeOut" }}
+        />
+      )}
+      <path d="M-25,-3 C-8,0 13,3 32,11" fill="none" stroke={visualSettings.accentColor} strokeOpacity="0.46" strokeWidth="1.7" />
+      <text x="4" y="4" textAnchor="middle" className="leaf-name node-name" style={{ fontSize: isHighlighted ? textSize * 1.1 : textSize }}>
+        {name}
+      </text>
+    </motion.g>
+  );
+});
+
 
 function AdminPage() {
   const { leaves, status } = useLeaves();
