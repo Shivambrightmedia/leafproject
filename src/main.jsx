@@ -493,7 +493,9 @@ function SubmitPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     if (appSettings.submissionsClosed) {
-      setError("Submissions are currently closed.");
+      setName("");
+      localStorage.setItem(SUBMISSION_STORAGE_KEY, "true");
+      setSent(true);
       return;
     }
     const cleanName = name.trim().replace(/\s+/g, " ");
@@ -569,50 +571,43 @@ function SubmitPage() {
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-black leading-tight text-white whitespace-nowrap">The Digital Tree Plantation</h1>
         </div>
 
-        {appSettings.submissionsClosed ? (
-          <div className="rounded-lg border border-white/20 bg-white/10 p-8 shadow-glow backdrop-blur text-center">
-            <h2 className="text-xl font-bold text-white">Submissions are currently closed</h2>
-            <p className="mt-2 text-white/80 font-semibold">Thank you for your interest in the Digital Tree Plantation.</p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="rounded-lg border border-white/20 bg-white/10 p-5 shadow-glow backdrop-blur">
-            <div className="flex flex-col md:flex-row md:items-center gap-4">
-              <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
-                <label className="whitespace-nowrap text-xl md:text-2xl font-black text-white shrink-0" htmlFor="name">
-                  # I
-                </label>
-                <div className="flex-1 md:flex-none md:w-[260px]">
-                  <input
-                    id="name"
-                    maxLength={20}
-                    value={name}
-                    onChange={(event) => {
-                      setName(event.target.value);
-                      setError("");
-                    }}
-                    className="h-11 w-full rounded-md border border-white/30 bg-white px-3 text-base font-semibold text-[#000028] outline-none transition focus:border-[#00e6dc] focus:ring-4 focus:ring-[#00e6dc]/25"
-                    placeholder="Enter name"
-                    autoComplete="name"
-                  />
-                </div>
-              </div>
-              <div className="flex-1">
-                <p className="text-sm md:text-base font-semibold text-white leading-snug">
-                  Plant my name in this digital forest as a promise to protect our real one.
-                </p>
-                {error && <span className="mt-1 block text-xs font-semibold text-[#ff9898]">{error}</span>}
+        <form onSubmit={handleSubmit} className="rounded-lg border border-white/20 bg-white/10 p-5 shadow-glow backdrop-blur">
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
+              <label className="whitespace-nowrap text-xl md:text-2xl font-black text-white shrink-0" htmlFor="name">
+                # I
+              </label>
+              <div className="flex-1 md:flex-none md:w-[260px]">
+                <input
+                  id="name"
+                  maxLength={20}
+                  value={name}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    setError("");
+                  }}
+                  className="h-11 w-full rounded-md border border-white/30 bg-white px-3 text-base font-semibold text-[#000028] outline-none transition focus:border-[#00e6dc] focus:ring-4 focus:ring-[#00e6dc]/25"
+                  placeholder="Enter name"
+                  autoComplete="name"
+                />
               </div>
             </div>
-            <button
-              className="mt-6 flex h-12 w-full md:w-auto md:min-w-[200px] items-center justify-center gap-2 rounded-md bg-[#009999] px-6 text-base font-black text-white transition hover:bg-white hover:text-[#009999] disabled:cursor-not-allowed disabled:opacity-60 md:ml-auto"
-              type="submit"
-              disabled={busy}
-            >
-              <Send size={19} />
-              {busy ? "Sending" : "Add My Tree"}
-            </button>
-          </form>
-        )}
+            <div className="flex-1">
+              <p className="text-sm md:text-base font-semibold text-white leading-snug">
+                Plant my name in this digital forest as a promise to protect our real one.
+              </p>
+              {error && <span className="mt-1 block text-xs font-semibold text-[#ff9898]">{error}</span>}
+            </div>
+          </div>
+          <button
+            className="mt-6 flex h-12 w-full md:w-auto md:min-w-[200px] items-center justify-center gap-2 rounded-md bg-[#009999] px-6 text-base font-black text-white transition hover:bg-white hover:text-[#009999] disabled:cursor-not-allowed disabled:opacity-60 md:ml-auto"
+            type="submit"
+            disabled={busy}
+          >
+            <Send size={19} />
+            {busy ? "Sending" : "Add My Tree"}
+          </button>
+        </form>
 
         <AnimatePresence>
           {sent && appSettings.allowMultipleSubmissions && (
