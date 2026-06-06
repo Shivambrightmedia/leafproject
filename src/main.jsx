@@ -30,6 +30,7 @@ const DEFAULT_SHOW_SETTINGS = {
   raysVisible: false,
   namesVisible: false,
   rayDuration: 10,
+  pulseIntensity: 1,
   namesPerBatch: 3,
   nameBatchSeconds: 1,
   revealStartedAt: 0,
@@ -815,6 +816,7 @@ function DisplayPage() {
           visualSettings={visualSettings}
           showRays={showSettings.raysVisible}
           rayDuration={Number(showSettings.rayDuration) || 10}
+          pulseIntensity={Number(showSettings.pulseIntensity) ?? 1}
         />
         <AnimatePresence>
           {arrangedLeaves.map((leafItem) => (
@@ -1124,6 +1126,17 @@ function AdminPage() {
               />
             </label>
             <label className="admin-field">
+              <span>Pulse Intensity (0-5)</span>
+              <input
+                type="number"
+                min="0"
+                max="5"
+                step="0.1"
+                value={draftShowSettings.pulseIntensity ?? 1}
+                onChange={(event) => setDraftShowSettings((settings) => ({ ...settings, pulseIntensity: Number(event.target.value) }))}
+              />
+            </label>
+            <label className="admin-field">
               <span>Names per batch</span>
               <input
                 type="number"
@@ -1346,7 +1359,7 @@ const WishLeaf = React.memo(function WishLeaf({ leaf: leafItem, isNewest, canDra
   );
 }, (prev, next) => prev.leaf.id === next.leaf.id && prev.leaf.x === next.leaf.x && prev.leaf.y === next.leaf.y && prev.isNewest === next.isNewest && prev.canDrag === next.canDrag);
 
-const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoints = [], showShapeGuide = false, visualSettings = DEFAULT_VISUAL_SETTINGS, showRays = true, rayDuration = 10 }) {
+const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoints = [], showShapeGuide = false, visualSettings = DEFAULT_VISUAL_SETTINGS, showRays = true, rayDuration = 10, pulseIntensity = 1 }) {
   const canopyPath = shapePointsToPath(shapePoints);
   const root = { x: 604, y: 700 };
   const neck = { x: 605, y: 450 };
@@ -1396,7 +1409,10 @@ const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoi
           { d: "M582,708 C566,604 578,520 602,440 C626,520 634,604 626,708", stroke: primary, width: 3.2, opacity: 0.82 },
           { d: "M604,708 C594,612 598,526 606,438 C617,526 622,612 616,708", stroke: accent, width: 2.2, opacity: 0.95 },
           { d: "M628,708 C662,602 646,520 610,438", stroke: secondary, width: 2.2, opacity: 0.74 },
-        ].map((line) => (
+        ].map((line) => {
+          const minOp = Math.max(0, line.opacity * (1 - 0.5 * pulseIntensity));
+          const maxOp = Math.min(1, line.opacity * (1 + (pulseIntensity - 1) * 0.5));
+          return (
           <motion.path
             key={line.d}
             d={line.d}
@@ -1406,14 +1422,14 @@ const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoi
             initial={{ pathLength: 0, opacity: 0 }}
             animate={{ 
               pathLength: showRays ? 1 : 0, 
-              opacity: showRays ? [line.opacity * 0.5, line.opacity, line.opacity * 0.5] : 0 
+              opacity: showRays ? [minOp, maxOp, minOp] : 0 
             }}
             transition={{ 
               pathLength: { duration: rayDuration, ease: "easeInOut" },
               opacity: showRays ? { duration: 2, repeat: Infinity, ease: "easeInOut" } : { duration: 0.5 }
             }}
           />
-        ))}
+        )})}
       </g>
       <g>
         {nodes.map((node, index) => {
@@ -1421,6 +1437,9 @@ const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoi
           const midY = Math.min(500, Math.max(245, node.y + 120));
           const path = `M${root.x},${root.y} C${root.x + sidePull * 0.25},${610 - index % 80} ${neck.x + sidePull},${midY} ${node.x},${node.y}`;
           const lineColor = getNodeColor(visualSettings, node.id);
+          const baseOp = 0.5;
+          const minNode = Math.max(0, baseOp - 0.2 * pulseIntensity);
+          const maxNode = Math.min(1, baseOp + 0.2 * pulseIntensity);
           return (
             <motion.path
               key={`${node.id}-line`}
@@ -1432,7 +1451,7 @@ const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoi
               initial={{ pathLength: 0, opacity: 0 }}
               animate={{ 
                 pathLength: showRays ? 1 : 0, 
-                opacity: showRays ? [0.3, 0.7, 0.3] : 0 
+                opacity: showRays ? [minNode, maxNode, minNode] : 0 
               }}
               transition={{ 
                 pathLength: { duration: rayDuration, delay: Math.min(index * 0.01, 0.7), ease: "easeInOut" },
