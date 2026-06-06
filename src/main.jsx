@@ -563,33 +563,34 @@ function SubmitPage() {
 
         <form onSubmit={handleSubmit} className="rounded-lg border border-white/20 bg-white/10 p-5 shadow-glow backdrop-blur">
           <div className="flex flex-col md:flex-row md:items-center gap-4">
-            <label className="whitespace-nowrap text-xl md:text-2xl font-black text-white shrink-0" htmlFor="name">
-              # I
-            </label>
-            <div className="w-full md:w-[280px] shrink-0">
-              <input
-                id="name"
-                maxLength={20}
-                value={name}
-                onChange={(event) => {
-                  setName(event.target.value);
-                  setError("");
-                }}
-                className="h-14 w-full rounded-md border border-white/30 bg-white px-4 text-lg font-semibold text-[#000028] outline-none transition focus:border-[#00e6dc] focus:ring-4 focus:ring-[#00e6dc]/25"
-                placeholder="Enter name"
-                autoComplete="name"
-              />
-              <div className="mt-2 flex justify-between text-xs font-semibold text-white/75">
-                <span className="text-[#ff9898]">{error}</span>
-                <span>{name.trim().length}/20</span>
+            <div className="flex items-center gap-3 shrink-0">
+              <label className="whitespace-nowrap text-xl md:text-2xl font-black text-white shrink-0" htmlFor="name">
+                # I
+              </label>
+              <div className="w-[180px] md:w-[220px] shrink-0">
+                <input
+                  id="name"
+                  maxLength={20}
+                  value={name}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    setError("");
+                  }}
+                  className="h-11 w-full rounded-md border border-white/30 bg-white px-3 text-base font-semibold text-[#000028] outline-none transition focus:border-[#00e6dc] focus:ring-4 focus:ring-[#00e6dc]/25"
+                  placeholder="Enter name"
+                  autoComplete="name"
+                />
               </div>
             </div>
-            <p className="text-sm md:text-base font-semibold text-white leading-snug">
-              Plant my name in this digital forest as a promise to protect our real one
-            </p>
+            <div className="flex-1">
+              <p className="text-sm md:text-base font-semibold text-white leading-snug">
+                Plant my name in this digital forest as a promise to protect our real one
+              </p>
+              {error && <span className="mt-1 block text-xs font-semibold text-[#ff9898]">{error}</span>}
+            </div>
           </div>
           <button
-            className="mt-6 flex h-14 w-full md:w-auto md:min-w-[200px] items-center justify-center gap-2 rounded-md bg-[#00e6dc] px-6 text-base font-black text-[#000028] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 md:ml-auto"
+            className="mt-6 flex h-12 w-full md:w-auto md:min-w-[200px] items-center justify-center gap-2 rounded-md bg-[#00e6dc] px-6 text-base font-black text-[#000028] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 md:ml-auto"
             type="submit"
             disabled={busy}
           >
