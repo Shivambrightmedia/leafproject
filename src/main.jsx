@@ -590,7 +590,7 @@ function SubmitPage() {
             </div>
           </div>
           <button
-            className="mt-6 flex h-12 w-full md:w-auto md:min-w-[200px] items-center justify-center gap-2 rounded-md bg-[#00e6dc] px-6 text-base font-black text-[#000028] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 md:ml-auto"
+            className="mt-6 flex h-12 w-full md:w-auto md:min-w-[200px] items-center justify-center gap-2 rounded-md bg-[#009999] px-6 text-base font-black text-white transition hover:bg-white hover:text-[#009999] disabled:cursor-not-allowed disabled:opacity-60 md:ml-auto"
             type="submit"
             disabled={busy}
           >
