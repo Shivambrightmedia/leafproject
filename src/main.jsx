@@ -553,36 +553,43 @@ function SubmitPage() {
 
   return (
     <main className="submit-shell">
-      <section className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 py-8">
+      <section className="mx-auto flex min-h-screen w-full max-w-4xl flex-col justify-center px-5 py-8">
         <div className="mb-8 flex items-center gap-3">
-          <div className="grid size-12 place-items-center rounded-full bg-white/10 text-white shadow-glow">
+          <div className="grid size-12 shrink-0 place-items-center rounded-full bg-white/10 text-white shadow-glow">
             <Trees size={26} />
           </div>
-          <h1 className="text-3xl font-black leading-tight text-white">The Digital Tree Plantation</h1>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black leading-tight text-white whitespace-nowrap">The Digital Tree Plantation</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="rounded-lg border border-white/20 bg-white/10 p-5 shadow-glow backdrop-blur">
-          <label className="mb-2 block text-sm font-bold text-white" htmlFor="name">
-            # I______
-          </label>
-          <input
-            id="name"
-            maxLength={20}
-            value={name}
-            onChange={(event) => {
-              setName(event.target.value);
-              setError("");
-            }}
-            className="h-14 w-full rounded-md border border-white/30 bg-white px-4 text-lg font-semibold text-[#000028] outline-none transition focus:border-[#00e6dc] focus:ring-4 focus:ring-[#00e6dc]/25"
-            placeholder="Enter name"
-            autoComplete="name"
-          />
-          <div className="mt-2 flex justify-between text-xs font-semibold text-white/75">
-            <span>{error}</span>
-            <span>{name.trim().length}/20</span>
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            <label className="whitespace-nowrap text-xl md:text-2xl font-black text-white shrink-0" htmlFor="name">
+              # I
+            </label>
+            <div className="w-full md:w-[280px] shrink-0">
+              <input
+                id="name"
+                maxLength={20}
+                value={name}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  setError("");
+                }}
+                className="h-14 w-full rounded-md border border-white/30 bg-white px-4 text-lg font-semibold text-[#000028] outline-none transition focus:border-[#00e6dc] focus:ring-4 focus:ring-[#00e6dc]/25"
+                placeholder="Enter name"
+                autoComplete="name"
+              />
+              <div className="mt-2 flex justify-between text-xs font-semibold text-white/75">
+                <span className="text-[#ff9898]">{error}</span>
+                <span>{name.trim().length}/20</span>
+              </div>
+            </div>
+            <p className="text-sm md:text-base font-semibold text-white leading-snug">
+              Plant my name in this digital forest as a promise to protect our real one
+            </p>
           </div>
           <button
-            className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-md bg-[#00e6dc] px-5 text-base font-black text-[#000028] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-6 flex h-14 w-full md:w-auto md:min-w-[200px] items-center justify-center gap-2 rounded-md bg-[#00e6dc] px-6 text-base font-black text-[#000028] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 md:ml-auto"
             type="submit"
             disabled={busy}
           >
