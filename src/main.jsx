@@ -224,14 +224,23 @@ function createPackedPlacements(leaves, salt = "", shapePoints = []) {
     .sort((a, b) => a.sort - b.sort);
   const used = [];
 
+  const minSquare = LEAF_MIN_DISTANCE * LEAF_MIN_DISTANCE;
+
   return leaves.map((leafItem, index) => {
     const preferredIndex = hashText(`${leafItem.id || leafItem.name}-${salt}`) % Math.max(slots.length, 1);
     let selected = null;
 
-    for (let attempt = 0; attempt < slots.length * LEAF_PLACEMENT_RETRY_MULTIPLIER; attempt += 1) {
-      const slot = slots[(preferredIndex + attempt * 37) % slots.length];
-      const clear = used.every((point) => Math.hypot(point.x - slot.x, point.y - slot.y) >= LEAF_MIN_DISTANCE);
-
+    for (let attempt = 0; attempt < slots.length; attempt += 1) {
+      const slot = slots[(preferredIndex + attempt) % slots.length];
+      let clear = true;
+      for (let i = 0; i < used.length; i++) {
+        const dx = used[i].x - slot.x;
+        const dy = used[i].y - slot.y;
+        if (dx * dx + dy * dy < minSquare) {
+          clear = false;
+          break;
+        }
+      }
       if (clear) {
         selected = slot;
         break;
@@ -239,21 +248,48 @@ function createPackedPlacements(leaves, salt = "", shapePoints = []) {
     }
 
     if (!selected) {
-      const relaxedDistances = [0.98, 0.96, 0.94, 0.92, 0.9, 0.86, 0.82, 0.78, 0.74, 0.7];
+      const relaxedDistances = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7];
       for (const multiplier of relaxedDistances) {
-        selected = slots.find((slot) => used.every((point) => Math.hypot(point.x - slot.x, point.y - slot.y) >= LEAF_MIN_DISTANCE * multiplier));
+        const relaxedSquare = minSquare * (multiplier * multiplier);
+        for (let attempt = 0; attempt < slots.length; attempt += 1) {
+          const slot = slots[(preferredIndex + attempt) % slots.length];
+          let clear = true;
+          for (let i = 0; i < used.length; i++) {
+            const dx = used[i].x - slot.x;
+            const dy = used[i].y - slot.y;
+            if (dx * dx + dy * dy < relaxedSquare) {
+              clear = false;
+              break;
+            }
+          }
+          if (clear) {
+            selected = slot;
+            break;
+          }
+        }
         if (selected) break;
       }
     }
 
     if (!selected) {
-      selected = slots.reduce((best, slot) => {
-        const nearestDistance = used.length
-          ? Math.min(...used.map((point) => Math.hypot(point.x - slot.x, point.y - slot.y)))
-          : Infinity;
-        if (!best || nearestDistance > best.nearestDistance) return { ...slot, nearestDistance };
-        return best;
-      }, null) || slots[index % slots.length] || CANOPY_CENTER;
+      let bestSlot = null;
+      let maxNearestSquare = -1;
+      
+      for (let i = 0; i < slots.length; i++) {
+        const slot = slots[i];
+        let nearestSquare = Infinity;
+        for (let j = 0; j < used.length; j++) {
+          const dx = used[j].x - slot.x;
+          const dy = used[j].y - slot.y;
+          const distSq = dx * dx + dy * dy;
+          if (distSq < nearestSquare) nearestSquare = distSq;
+        }
+        if (nearestSquare > maxNearestSquare) {
+          maxNearestSquare = nearestSquare;
+          bestSlot = slot;
+        }
+      }
+      selected = bestSlot || slots[index % slots.length] || CANOPY_CENTER;
     }
 
     const jitterX = ((hashText(`${leafItem.id}-x-${salt}`) % 100) - 50) * 0.14;
@@ -605,8 +641,6 @@ function DisplayPage() {
   }, [draggedLeafId, draggedLeafPosition, visibleLeaves, shapePoints]);
   const rayLeaves = useMemo(() => arrangeLeaves(leaves, shapePoints), [leaves, shapePoints]);
   const newestLeaf = arrangedLeaves.find((leafItem) => leafItem.id === newestId) || arrangedLeaves.at(-1);
-
-  console.log(`[Debug] DisplayPage Render | Total: ${leaves.length} | Visible: ${visibleCount} | RayLeaves: ${rayLeaves.length} | Newest: ${newestId}`);
 
   useEffect(() => {
     const currentIds = new Set(leaves.map((leafItem) => leafItem.id));
@@ -1303,7 +1337,6 @@ const WishLeaf = React.memo(function WishLeaf({ leaf: leafItem, isNewest, canDra
 }, (prev, next) => prev.leaf.id === next.leaf.id && prev.leaf.x === next.leaf.x && prev.leaf.y === next.leaf.y && prev.isNewest === next.isNewest && prev.canDrag === next.canDrag);
 
 const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoints = [], showShapeGuide = false, visualSettings = DEFAULT_VISUAL_SETTINGS, showRays = true, rayDuration = 10 }) {
-  console.log(`[Debug] DigitalTreeSvg Render | Nodes: ${nodes?.length}`);
   const canopyPath = shapePointsToPath(shapePoints);
   const root = { x: 604, y: 700 };
   const neck = { x: 605, y: 450 };
