@@ -274,7 +274,7 @@ function createPackedPlacements(leaves, salt = "", shapePoints = []) {
     if (!selected) {
       let bestSlot = null;
       let maxNearestSquare = -1;
-      
+
       for (let i = 0; i < slots.length; i++) {
         const slot = slots[i];
         let nearestSquare = Infinity;
@@ -584,13 +584,13 @@ function SubmitPage() {
             </div>
             <div className="flex-1">
               <p className="text-sm md:text-base font-semibold text-white leading-snug">
-                Plant my name in this digital forest as a promise to protect our real one
+                Plant my name in this digital forest as a promise to protect our real one.
               </p>
               {error && <span className="mt-1 block text-xs font-semibold text-[#ff9898]">{error}</span>}
             </div>
           </div>
           <button
-            className="mt-6 flex h-12 w-full md:w-auto md:min-w-[200px] items-center justify-center gap-2 rounded-md bg-[#009999] px-6 text-base font-black text-white transition hover:bg-white hover:text-[#009999] disabled:cursor-not-allowed disabled:opacity-60 md:ml-auto"
+            className="mt-6 flex h-12 w-full md:w-auto md:min-w-[200px] items-center justify-center gap-2 rounded-md bg-[#00e6dc] px-6 text-base font-black text-[#000028] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 md:ml-auto"
             type="submit"
             disabled={busy}
           >
@@ -632,7 +632,7 @@ function DisplayPage() {
 
   const activeShape = draftPoints.length > 2 ? draftPoints : shapePoints;
   const visibleCount = useTimedVisibleCount(leaves.length, showSettings);
-  
+
   const visibleLeaves = useMemo(
     () => showSettings.namesVisible ? leaves.slice(0, visibleCount) : [],
     [showSettings.namesVisible, leaves, visibleCount]
@@ -1269,15 +1269,15 @@ const WishLeaf = React.memo(function WishLeaf({ leaf: leafItem, isNewest, canDra
     const swings = 1.5 + ((fallSeed % 10) * 0.1);
     const amplitude = 60 + (fallSeed % 50);
     const steps = 20;
-    
+
     const xArr = [];
     const rotArr = [];
     const tArr = [];
-    
+
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
       tArr.push(t);
-      
+
       if (i === steps) {
         xArr.push(0);
         rotArr.push(0);
@@ -1285,12 +1285,12 @@ const WishLeaf = React.memo(function WishLeaf({ leaf: leafItem, isNewest, canDra
         const taper = 1 - t;
         const sineValue = Math.sin(t * Math.PI * 2 * swings);
         const gust = i === 0 ? 0 : ((hashText(`${leafItem.id}-g-${i}`) % 30) - 15);
-        
+
         xArr.push((startDrift * taper) + (sineValue * amplitude) + gust);
         rotArr.push(Math.cos(t * Math.PI * 2 * swings) * (amplitude * 0.6) + gust * 1.5);
       }
     }
-    
+
     return { swayX: xArr, fallRotate: rotArr, fallTimes: tArr, startY: startYValue };
   }, [leafItem.id, fallSeed]);
 
