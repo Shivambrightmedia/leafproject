@@ -205,8 +205,8 @@ function shapePointsToPath(points) {
   return `${points.map((point, index) => `${index === 0 ? "M" : "L"}${point.x},${point.y}`).join(" ")} Z`;
 }
 
-function createTreePlacement(leafItem, index, total, salt = "", shapePoints = []) {
-  const slots = createTreeSlots(total, shapePoints);
+function createTreePlacement(leafItem, index, total, salt = "", shapePoints = [], spread = 1.0) {
+  const slots = createTreeSlots(total, shapePoints, spread);
   const slotIndex = (index + hashText(`${leafItem.id || leafItem.name}-${salt}`)) % slots.length;
   const slot = slots[slotIndex];
   const jitterX = ((hashText(`${leafItem.id}-x-${salt}`) % 100) - 50) * 0.3;
@@ -219,8 +219,8 @@ function createTreePlacement(leafItem, index, total, salt = "", shapePoints = []
   };
 }
 
-function createPackedPlacements(leaves, salt = "", shapePoints = []) {
-  const slots = createTreeSlots(leaves.length, shapePoints)
+function createPackedPlacements(leaves, salt = "", shapePoints = [], spread = 1.0) {
+  const slots = createTreeSlots(leaves.length, shapePoints, spread)
     .map((slot, index) => ({
       ...slot,
       sort: hashText(`${slot.x}-${slot.y}-${salt}`) + index * 17,
@@ -652,15 +652,15 @@ function DisplayPage() {
   );
 
   const arrangedLeaves = useMemo(() => {
-    const arranged = arrangeLeaves(visibleLeaves, shapePoints);
+    const arranged = arrangeLeaves(visibleLeaves, shapePoints, visualSettings.canopySpread);
     if (!draggedLeafId || !draggedLeafPosition) return arranged;
     return arranged.map((leafItem) => (
       leafItem.id === draggedLeafId
         ? { ...leafItem, x: draggedLeafPosition.x, y: draggedLeafPosition.y }
         : leafItem
     ));
-  }, [draggedLeafId, draggedLeafPosition, visibleLeaves, shapePoints]);
-  const rayLeaves = useMemo(() => arrangeLeaves(leaves, shapePoints), [leaves, shapePoints]);
+  }, [draggedLeafId, draggedLeafPosition, visibleLeaves, shapePoints, visualSettings.canopySpread]);
+  const rayLeaves = useMemo(() => arrangeLeaves(leaves, shapePoints, visualSettings.canopySpread), [leaves, shapePoints, visualSettings.canopySpread]);
   const newestLeaf = arrangedLeaves.find((leafItem) => leafItem.id === newestId) || arrangedLeaves.at(-1);
 
   useEffect(() => {
@@ -673,7 +673,7 @@ function DisplayPage() {
   async function rearrangeFromDisplay() {
     if (!firebaseReady || !leaves.length) return;
     const updates = {};
-    const placements = createPackedPlacements(leaves, String(Date.now()), shapePoints);
+    const placements = createPackedPlacements(leaves, String(Date.now()), shapePoints, visualSettings.canopySpread);
 
     leaves.forEach((leafItem, index) => {
       const placement = placements[index];
@@ -859,7 +859,7 @@ function ViewPage() {
   const CLOUDINARY_CLOUD = "derb7wswl";
   const CLOUDINARY_FOLDER = "trees123";
 
-  const arrangedLeaves = useMemo(() => arrangeLeaves(leaves, shapePoints), [leaves, shapePoints]);
+  const arrangedLeaves = useMemo(() => arrangeLeaves(leaves, shapePoints, visualSettings.canopySpread), [leaves, shapePoints, visualSettings.canopySpread]);
   const rayLeaves = arrangedLeaves;
 
   const CENTER_TARGET = { x: 610, y: 280 };
@@ -1129,7 +1129,7 @@ function AdminPage() {
     try {
       const updates = {};
       const salt = String(Date.now());
-      const placements = createPackedPlacements(leaves, salt, shapePoints);
+      const placements = createPackedPlacements(leaves, salt, shapePoints, visualSettings.canopySpread);
       leaves.forEach((leafItem, index) => {
         const placement = placements[index];
         updates[`leaves/${leafItem.id}/x`] = placement.x;
@@ -1207,7 +1207,7 @@ function AdminPage() {
     try {
       const updates = {};
       const salt = String(Date.now());
-      const placements = createPackedPlacements(leaves, salt, shapePoints);
+      const placements = createPackedPlacements(leaves, salt, shapePoints, visualSettings.canopySpread);
       leaves.forEach((leafItem, index) => {
         const placement = placements[index];
         updates[`leaves/${leafItem.id}/x`] = placement.x;
@@ -1511,16 +1511,16 @@ function AdminPage() {
   );
 }
 
-function arrangeLeaves(leaves, shapePoints = []) {
-  const fallbackPlacements = createPackedPlacements(leaves, "display-fallback", shapePoints);
+function arrangeLeaves(leaves, shapePoints = [], spread = 1.0) {
+  const fallbackPlacements = createPackedPlacements(leaves, "display-fallback", shapePoints, spread);
 
   return leaves.map((leafItem, index) => {
-    const fallback = fallbackPlacements[index] || createTreePlacement(leafItem, index, leaves.length, "", shapePoints);
+    const fallback = fallbackPlacements[index] || createTreePlacement(leafItem, index, leaves.length, "", shapePoints, spread);
     const savedX = Number(leafItem.x);
     const savedY = Number(leafItem.y);
     const savedPositionIsUsable = Number.isFinite(savedX)
       && Number.isFinite(savedY)
-      && isInsideActiveShape(savedX, savedY, shapePoints, LEAF_BORDER_PADDING);
+      && isInsideActiveShape(savedX, savedY, shapePoints, LEAF_BORDER_PADDING, spread);
     const x = savedPositionIsUsable ? savedX : fallback.x;
     const y = savedPositionIsUsable ? savedY : fallback.y;
 
