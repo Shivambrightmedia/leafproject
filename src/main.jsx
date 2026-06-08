@@ -27,6 +27,7 @@ const DEFAULT_VISUAL_SETTINGS = {
 const DEFAULT_APP_SETTINGS = {
   allowMultipleSubmissions: false,
   submissionsClosed: false,
+  redirectToView: false,
 };
 const DEFAULT_SHOW_SETTINGS = {
   raysVisible: false,
@@ -492,6 +493,12 @@ function SubmitPage() {
   useEffect(() => {
     if (appSettings.allowMultipleSubmissions) setSent(false);
   }, [appSettings.allowMultipleSubmissions]);
+
+  useEffect(() => {
+    if (appSettings.redirectToView) {
+      window.location.hash = "#/view";
+    }
+  }, [appSettings.redirectToView]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -1460,6 +1467,18 @@ function AdminPage() {
               className="size-5"
             />
             Stop taking responses
+          </label>
+          <label className="mt-3 flex items-center gap-3 text-sm font-black text-[#59f1ff]">
+            <input
+              type="checkbox"
+              checked={draftAppSettings.redirectToView}
+              onChange={(event) => setDraftAppSettings((settings) => ({
+                ...settings,
+                redirectToView: event.target.checked,
+              }))}
+              className="size-5"
+            />
+            Force Submit Page to View Page
           </label>
         </div>
 
