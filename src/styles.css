@@ -100,8 +100,9 @@ body {
 .tree-stage {
   position: absolute;
   inset: 0;
+  top: 10vh;
   width: 100vw;
-  height: 100vh;
+  height: 90vh;
 }
 
 .tree-stage.is-drawing-shape {
