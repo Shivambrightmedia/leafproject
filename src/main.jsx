@@ -1104,6 +1104,21 @@ function AdminPage() {
     }
   }
 
+  async function resetShape() {
+    if (!firebaseReady || !window.confirm("Reset shape to default?")) return;
+    setBusyId("reset-shape");
+    setMessage("");
+
+    try {
+      await remove(ref(db, "settings/canopyShape"));
+      setMessage("Shape reset to default.");
+    } catch {
+      setMessage("Could not reset shape. Check database rules.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
   async function rearrangeLeaves() {
     if (!firebaseReady) return;
     setBusyId("rearrange");
@@ -1253,6 +1268,15 @@ function AdminPage() {
             >
               <Trash2 size={18} />
               Delete All
+            </button>
+            <button
+              type="button"
+              onClick={resetShape}
+              disabled={busyId === "reset-shape"}
+              className="admin-button border border-[#3a8dc7] bg-white text-[#1d599f] hover:bg-[#edf5ff]"
+            >
+              <RefreshCw size={18} />
+              Reset Shape
             </button>
           </div>
         </div>
