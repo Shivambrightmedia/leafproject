@@ -1,0 +1,9 @@
+@font-face {
+    font-family: 'Siemens Sans';
+    src: url('dehinted-SiemensSans-Roman.woff2') format('woff2'),
+        url('dehinted-SiemensSans-Roman.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
