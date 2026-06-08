@@ -22,6 +22,7 @@ const DEFAULT_VISUAL_SETTINGS = {
   primaryColor: "#59f1ff",
   secondaryColor: "#21c8d7",
   accentColor: "#9ffbff",
+  canopySpread: 1.0,
 };
 const DEFAULT_APP_SETTINGS = {
   allowMultipleSubmissions: false,
@@ -1304,6 +1305,17 @@ function AdminPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-[220px_1fr_1fr_1fr]">
+            <label className="admin-field">
+              <span>Spread Extent: {draftVisualSettings.canopySpread ?? 1.0}</span>
+              <input
+                type="range"
+                min="0.5"
+                max="2.0"
+                step="0.1"
+                value={draftVisualSettings.canopySpread ?? 1.0}
+                onChange={(event) => setDraftVisualSettings((settings) => ({ ...settings, canopySpread: parseFloat(event.target.value) }))}
+              />
+            </label>
             <label className="admin-field">
               <span>Mode</span>
               <select
