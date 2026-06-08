@@ -902,7 +902,7 @@ function ViewPage() {
     if (!leafItem || leafItem.id !== highlightedId) return;
     const encodedName = encodeURIComponent(leafItem.name.replace(/\s+/g, '').toLowerCase());
     const url = `https://res.cloudinary.com/${CLOUDINARY_CLOUD}/image/upload/${encodedName}`;
-    window.open(url, "_blank");
+    setImageUrl(url);
   }
 
   function closeImage() {
@@ -1016,7 +1016,16 @@ function ViewPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.7, opacity: 0 }}
               transition={{ duration: 0.4, ease: "easeOut" }}
+              onClick={(e) => e.stopPropagation()}
             />
+            <a
+              href={imageUrl.replace("/image/upload/", "/image/upload/fl_attachment/")}
+              download
+              onClick={(e) => e.stopPropagation()}
+              className="image-overlay-download"
+            >
+              Save Image
+            </a>
             <button type="button" className="image-overlay-close" onClick={closeImage}>✕</button>
           </motion.div>
         )}
