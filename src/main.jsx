@@ -12,7 +12,6 @@ import {
   update,
 } from "firebase/database";
 import { db, firebaseReady } from "./services/firebase";
-import { arrangeLeavesRadial } from "./utils/layoutEngine";
 import "./styles.css";
 
 const LEAF_COLORS = ["#2f8f46", "#74b84f", "#a7c957"];
@@ -43,7 +42,7 @@ const CANOPY_CENTER = { x: 610, y: 285 };
 const CANOPY_RADIUS = { x: 465, y: 255 };
 const CANOPY_CLIP_ID = "wish-tree-canopy-clip";
 const DEFAULT_CANOPY_PATH = "M122,334 C145,188 292,93 475,92 C522,38 697,38 746,92 C928,94 1075,188 1098,334 C1117,455 1006,539 844,516 C770,575 452,575 376,516 C214,539 103,455 122,334 Z";
-const LEAF_SAFE_BOUNDS = { minX: 175, maxX: 1025, minY: 70, maxY: 525 };
+const LEAF_SAFE_BOUNDS = { minX: 40, maxX: 1160, minY: 20, maxY: 650 };
 const LEAF_BORDER_PADDING = 120;
 const LEAF_MIN_DISTANCE = 80;
 const LEAF_PLACEMENT_RETRY_MULTIPLIER = 48;
@@ -106,8 +105,8 @@ function createTreeSlots(count, shapePoints = []) {
     for (let column = 0; column < columns; column += 1) {
       const normalizedX = columns === 1 ? 0 : column / (columns - 1);
       const normalizedY = rows === 1 ? 0 : row / (rows - 1);
-      const x = 115 + normalizedX * 990;
-      const y = 62 + normalizedY * 478;
+      const x = 40 + normalizedX * 1120;
+      const y = 20 + normalizedY * 630;
 
       if (isInsideActiveShape(x, y, shapePoints, LEAF_BORDER_PADDING)) {
         slots.push({
@@ -141,11 +140,11 @@ function isInsideLeafSafeArea(x, y) {
 }
 
 function isInsideCanopyShape(x, y) {
-  const upperCrown = ((x - 610) / 500) ** 2 + ((y - 260) / 230) ** 2 <= 1;
-  const leftShoulder = ((x - 405) / 235) ** 2 + ((y - 345) / 185) ** 2 <= 1;
-  const rightShoulder = ((x - 815) / 235) ** 2 + ((y - 345) / 185) ** 2 <= 1;
-  const lowerCenter = ((x - 610) / 265) ** 2 + ((y - 430) / 125) ** 2 <= 1;
-  const trunkGap = x > 535 && x < 685 && y > 455;
+  const upperCrown = ((x - 610) / 550) ** 2 + ((y - 250) / 280) ** 2 <= 1;
+  const leftShoulder = ((x - 350) / 280) ** 2 + ((y - 345) / 240) ** 2 <= 1;
+  const rightShoulder = ((x - 870) / 280) ** 2 + ((y - 345) / 240) ** 2 <= 1;
+  const lowerCenter = ((x - 610) / 320) ** 2 + ((y - 450) / 160) ** 2 <= 1;
+  const trunkGap = x > 535 && x < 685 && y > 470;
 
   return (upperCrown || leftShoulder || rightShoulder || lowerCenter) && !trunkGap;
 }
@@ -219,10 +218,94 @@ function createTreePlacement(leafItem, index, total, salt = "", shapePoints = []
 }
 
 function createPackedPlacements(leaves, salt = "", shapePoints = []) {
-  return arrangeLeavesRadial(leaves, salt);
-}
+  const slots = createTreeSlots(leaves.length, shapePoints)
+    .map((slot, index) => ({
+      ...slot,
+      sort: hashText(`${slot.x}-${slot.y}-${salt}`) + index * 17,
+    }))
+    .sort((a, b) => a.sort - b.sort);
+  const used = [];
 
-// Removed the rest of the old createPackedPlacements body
+  const minSquare = LEAF_MIN_DISTANCE * LEAF_MIN_DISTANCE;
+
+  return leaves.map((leafItem, index) => {
+    const preferredIndex = hashText(`${leafItem.id || leafItem.name}-${salt}`) % Math.max(slots.length, 1);
+    let selected = null;
+
+    for (let attempt = 0; attempt < slots.length; attempt += 1) {
+      const slot = slots[(preferredIndex + attempt) % slots.length];
+      let clear = true;
+      for (let i = 0; i < used.length; i++) {
+        const dx = used[i].x - slot.x;
+        const dy = used[i].y - slot.y;
+        if (dx * dx + dy * dy < minSquare) {
+          clear = false;
+          break;
+        }
+      }
+      if (clear) {
+        selected = slot;
+        break;
+      }
+    }
+
+    if (!selected) {
+      const relaxedDistances = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7];
+      for (const multiplier of relaxedDistances) {
+        const relaxedSquare = minSquare * (multiplier * multiplier);
+        for (let attempt = 0; attempt < slots.length; attempt += 1) {
+          const slot = slots[(preferredIndex + attempt) % slots.length];
+          let clear = true;
+          for (let i = 0; i < used.length; i++) {
+            const dx = used[i].x - slot.x;
+            const dy = used[i].y - slot.y;
+            if (dx * dx + dy * dy < relaxedSquare) {
+              clear = false;
+              break;
+            }
+          }
+          if (clear) {
+            selected = slot;
+            break;
+          }
+        }
+        if (selected) break;
+      }
+    }
+
+    if (!selected) {
+      let bestSlot = null;
+      let maxNearestSquare = -1;
+
+      for (let i = 0; i < slots.length; i++) {
+        const slot = slots[i];
+        let nearestSquare = Infinity;
+        for (let j = 0; j < used.length; j++) {
+          const dx = used[j].x - slot.x;
+          const dy = used[j].y - slot.y;
+          const distSq = dx * dx + dy * dy;
+          if (distSq < nearestSquare) nearestSquare = distSq;
+        }
+        if (nearestSquare > maxNearestSquare) {
+          maxNearestSquare = nearestSquare;
+          bestSlot = slot;
+        }
+      }
+      selected = bestSlot || slots[index % slots.length] || CANOPY_CENTER;
+    }
+
+    const jitterX = ((hashText(`${leafItem.id}-x-${salt}`) % 100) - 50) * 0.14;
+    const jitterY = ((hashText(`${leafItem.id}-y-${salt}`) % 100) - 50) * 0.1;
+    const placement = {
+      x: Math.round(Math.min(LEAF_SAFE_BOUNDS.maxX, Math.max(LEAF_SAFE_BOUNDS.minX, selected.x + jitterX))),
+      y: Math.round(Math.min(LEAF_SAFE_BOUNDS.maxY, Math.max(LEAF_SAFE_BOUNDS.minY, selected.y + jitterY))),
+      rotate: (hashText(`${leafItem.id}-${salt}`) % 70) - 35,
+    };
+
+    used.push(placement);
+    return placement;
+  });
+}
 
 function moveShapePoints(points, dx, dy) {
   return points.map((point) => ({
@@ -1398,15 +1481,16 @@ function arrangeLeaves(leaves, shapePoints = []) {
     const fallback = fallbackPlacements[index] || createTreePlacement(leafItem, index, leaves.length, "", shapePoints);
     const savedX = Number(leafItem.x);
     const savedY = Number(leafItem.y);
-    const savedPositionIsUsable = Number.isFinite(savedX) && Number.isFinite(savedY);
-    
+    const savedPositionIsUsable = Number.isFinite(savedX)
+      && Number.isFinite(savedY)
+      && isInsideActiveShape(savedX, savedY, shapePoints, LEAF_BORDER_PADDING);
     const x = savedPositionIsUsable ? savedX : fallback.x;
     const y = savedPositionIsUsable ? savedY : fallback.y;
 
     return {
       ...leafItem,
-      x: Math.round(x),
-      y: Math.round(y),
+      x: Math.round(Math.min(LEAF_SAFE_BOUNDS.maxX, Math.max(LEAF_SAFE_BOUNDS.minX, x))),
+      y: Math.round(Math.min(LEAF_SAFE_BOUNDS.maxY, Math.max(LEAF_SAFE_BOUNDS.minY, y))),
       rotate: Number.isFinite(Number(leafItem.rotate)) ? Number(leafItem.rotate) : fallback.rotate,
     };
   });
