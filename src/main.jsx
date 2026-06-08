@@ -1633,9 +1633,9 @@ const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoi
       <ellipse cx="610" cy="720" rx="260" ry="20" fill={primary} opacity={showRays ? 0.08 : 0} />
       <g filter="url(#cyan-glow)">
         {[
-          { d: "M582,708 C566,604 578,520 602,440 C626,520 634,604 626,708", stroke: primary, width: 3.2, opacity: 0.82 },
-          { d: "M604,708 C594,612 598,526 606,438 C617,526 622,612 616,708", stroke: accent, width: 2.2, opacity: 0.95 },
-          { d: "M628,708 C662,602 646,520 610,438", stroke: secondary, width: 2.2, opacity: 0.74 },
+          { d: "M582,708 C566,604 578,520 602,440 C626,520 634,604 626,708", stroke: primary, width: 6.4, opacity: 0.82 },
+          { d: "M604,708 C594,612 598,526 606,438 C617,526 622,612 616,708", stroke: accent, width: 4.4, opacity: 0.95 },
+          { d: "M628,708 C662,602 646,520 610,438", stroke: secondary, width: 4.4, opacity: 0.74 },
         ].map((line) => {
           const minOp = Math.max(0, line.opacity * (1 - 0.5 * pulseIntensity));
           const maxOp = Math.min(1, line.opacity * (1 + (pulseIntensity - 1) * 0.5));
@@ -1673,7 +1673,7 @@ const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoi
               d={path}
               fill="none"
               stroke={lineColor}
-              strokeWidth={index % 5 === 0 ? 2.2 : 1.35}
+              strokeWidth={index % 5 === 0 ? 4.0 : 2.5}
               strokeOpacity="0.56"
               initial={{ pathLength: 0, opacity: 0 }}
               animate={{ 
