@@ -884,7 +884,7 @@ function ViewPage() {
 
   function openLeafImage(leafItem) {
     if (!leafItem || leafItem.id !== highlightedId) return;
-    const encodedName = encodeURIComponent(leafItem.name.trim().toLowerCase());
+    const encodedName = encodeURIComponent(leafItem.name.replace(/\s+/g, '').toLowerCase());
     const url = `https://res.cloudinary.com/${CLOUDINARY_CLOUD}/image/upload/${encodedName}`;
     window.open(url, "_blank");
   }
