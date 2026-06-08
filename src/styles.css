@@ -4,7 +4,8 @@
 
 @font-face {
   font-family: "SISAN03";
-  src: url("/SISAN03.TTF") format("truetype");
+  src: url("/SISAN03.woff2") format("woff2"),
+       url("/SISAN03.TTF") format("truetype");
   font-display: swap;
 }
 
