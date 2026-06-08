@@ -1088,6 +1088,39 @@ function AdminPage() {
   const [draftVisualSettings, setDraftVisualSettings] = useState(DEFAULT_VISUAL_SETTINGS);
   const [draftAppSettings, setDraftAppSettings] = useState(DEFAULT_APP_SETTINGS);
   const [draftShowSettings, setDraftShowSettings] = useState(DEFAULT_SHOW_SETTINGS);
+  const [authenticated, setAuthenticated] = useState(() => localStorage.getItem("admin_auth") === "true");
+  const [password, setPassword] = useState("");
+
+  if (!authenticated) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-[#f5f0e6] px-5 text-[#173b27]">
+        <section className="w-full max-w-sm rounded-lg border border-[#d6c8a7] bg-white p-6 shadow-glow text-center">
+          <h1 className="text-2xl font-black mb-4">Admin Access</h1>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (password === "360brightmedia") {
+              setAuthenticated(true);
+              localStorage.setItem("admin_auth", "true");
+            } else {
+              alert("Incorrect password");
+            }
+          }}>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-md border border-[#c6d49f] p-3 mb-4 bg-[#f8fbf3] outline-none font-bold"
+              placeholder="Enter password"
+              autoFocus
+            />
+            <button className="admin-button w-full bg-[#173b27] text-white hover:bg-[#22583a]">
+              Login
+            </button>
+          </form>
+        </section>
+      </main>
+    );
+  }
 
   useEffect(() => {
     setDraftVisualSettings(visualSettings);
