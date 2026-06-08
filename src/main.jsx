@@ -42,7 +42,7 @@ const CANOPY_CENTER = { x: 610, y: 285 };
 const CANOPY_RADIUS = { x: 465, y: 255 };
 const CANOPY_CLIP_ID = "wish-tree-canopy-clip";
 const DEFAULT_CANOPY_PATH = "M122,334 C145,188 292,93 475,92 C522,38 697,38 746,92 C928,94 1075,188 1098,334 C1117,455 1006,539 844,516 C770,575 452,575 376,516 C214,539 103,455 122,334 Z";
-const LEAF_SAFE_BOUNDS = { minX: 40, maxX: 1160, minY: 20, maxY: 650 };
+const LEAF_SAFE_BOUNDS = { minX: 175, maxX: 1025, minY: 70, maxY: 525 };
 const LEAF_BORDER_PADDING = 120;
 const LEAF_MIN_DISTANCE = 80;
 const LEAF_PLACEMENT_RETRY_MULTIPLIER = 48;
@@ -105,8 +105,8 @@ function createTreeSlots(count, shapePoints = []) {
     for (let column = 0; column < columns; column += 1) {
       const normalizedX = columns === 1 ? 0 : column / (columns - 1);
       const normalizedY = rows === 1 ? 0 : row / (rows - 1);
-      const x = 40 + normalizedX * 1120;
-      const y = 20 + normalizedY * 630;
+      const x = 115 + normalizedX * 990;
+      const y = 62 + normalizedY * 478;
 
       if (isInsideActiveShape(x, y, shapePoints, LEAF_BORDER_PADDING)) {
         slots.push({
@@ -140,11 +140,11 @@ function isInsideLeafSafeArea(x, y) {
 }
 
 function isInsideCanopyShape(x, y) {
-  const upperCrown = ((x - 610) / 550) ** 2 + ((y - 250) / 280) ** 2 <= 1;
-  const leftShoulder = ((x - 350) / 280) ** 2 + ((y - 345) / 240) ** 2 <= 1;
-  const rightShoulder = ((x - 870) / 280) ** 2 + ((y - 345) / 240) ** 2 <= 1;
-  const lowerCenter = ((x - 610) / 320) ** 2 + ((y - 450) / 160) ** 2 <= 1;
-  const trunkGap = x > 535 && x < 685 && y > 470;
+  const upperCrown = ((x - 610) / 500) ** 2 + ((y - 260) / 230) ** 2 <= 1;
+  const leftShoulder = ((x - 405) / 235) ** 2 + ((y - 345) / 185) ** 2 <= 1;
+  const rightShoulder = ((x - 815) / 235) ** 2 + ((y - 345) / 185) ** 2 <= 1;
+  const lowerCenter = ((x - 610) / 265) ** 2 + ((y - 430) / 125) ** 2 <= 1;
+  const trunkGap = x > 535 && x < 685 && y > 455;
 
   return (upperCrown || leftShoulder || rightShoulder || lowerCenter) && !trunkGap;
 }
