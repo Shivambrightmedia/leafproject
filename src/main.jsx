@@ -1091,6 +1091,18 @@ function AdminPage() {
   const [authenticated, setAuthenticated] = useState(() => localStorage.getItem("admin_auth") === "true");
   const [password, setPassword] = useState("");
 
+  useEffect(() => {
+    setDraftVisualSettings(visualSettings);
+  }, [visualSettings]);
+
+  useEffect(() => {
+    setDraftAppSettings(appSettings);
+  }, [appSettings]);
+
+  useEffect(() => {
+    setDraftShowSettings(showSettings);
+  }, [showSettings]);
+
   if (!authenticated) {
     return (
       <main className="grid min-h-screen place-items-center bg-[#f5f0e6] px-5 text-[#173b27]">
@@ -1121,18 +1133,6 @@ function AdminPage() {
       </main>
     );
   }
-
-  useEffect(() => {
-    setDraftVisualSettings(visualSettings);
-  }, [visualSettings]);
-
-  useEffect(() => {
-    setDraftAppSettings(appSettings);
-  }, [appSettings]);
-
-  useEffect(() => {
-    setDraftShowSettings(showSettings);
-  }, [showSettings]);
 
   async function deleteLeaf(id) {
     if (!firebaseReady) return;
