@@ -1660,10 +1660,9 @@ const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoi
       </g>
       <g>
         {nodes.map((node, index) => {
-          const sidePull = (node.x - neck.x) * 0.6; // Dynamic spread based on leaf position
+          const sidePull = node.x < neck.x ? -80 : 80;
           const midY = Math.min(500, Math.max(245, node.y + 120));
-          const spreadBase = (index % 15 - 7) * 4; // Spread the roots slightly at the base
-          const path = `M${root.x + spreadBase},${root.y} C${root.x + spreadBase + sidePull * 0.3},${610 - index % 80} ${neck.x + sidePull},${midY} ${node.x},${node.y}`;
+          const path = `M${root.x},${root.y} C${root.x + sidePull * 0.25},${610 - index % 80} ${neck.x + sidePull},${midY} ${node.x},${node.y}`;
           const lineColor = getNodeColor(visualSettings, node.id);
           const baseOp = 0.5;
           const minNode = Math.max(0, baseOp - 0.2 * pulseIntensity);
