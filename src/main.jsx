@@ -496,7 +496,7 @@ function SubmitPage() {
 
   useEffect(() => {
     if (appSettings.redirectToView) {
-      window.location.hash = "#/view";
+      window.location.pathname = "/view";
     }
   }, [appSettings.redirectToView]);
 
