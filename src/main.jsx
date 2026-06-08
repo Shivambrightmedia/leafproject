@@ -28,6 +28,7 @@ const DEFAULT_APP_SETTINGS = {
   allowMultipleSubmissions: false,
   submissionsClosed: false,
   redirectToView: false,
+  _loaded: false,
 };
 const DEFAULT_SHOW_SETTINGS = {
   raysVisible: false,
@@ -393,6 +394,7 @@ function useAppSettings() {
       setAppSettings({
         ...DEFAULT_APP_SETTINGS,
         ...(snapshot.val() || {}),
+        _loaded: true,
       });
     });
   }, []);
@@ -495,10 +497,10 @@ function SubmitPage() {
   }, [appSettings.allowMultipleSubmissions]);
 
   useEffect(() => {
-    if (appSettings.redirectToView) {
+    if (appSettings._loaded && appSettings.redirectToView) {
       window.location.pathname = "/view";
     }
-  }, [appSettings.redirectToView]);
+  }, [appSettings.redirectToView, appSettings._loaded]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -861,10 +863,10 @@ function ViewPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    if (!appSettings.redirectToView) {
+    if (appSettings._loaded && !appSettings.redirectToView) {
       window.location.pathname = "/";
     }
-  }, [appSettings.redirectToView]);
+  }, [appSettings.redirectToView, appSettings._loaded]);
   const [highlightedId, setHighlightedId] = useState(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [imageUrl, setImageUrl] = useState(null);
