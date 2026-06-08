@@ -22,6 +22,8 @@ const DEFAULT_VISUAL_SETTINGS = {
   primaryColor: "#59f1ff",
   secondaryColor: "#21c8d7",
   accentColor: "#9ffbff",
+  rayColor: "#59f1ff",
+  trunkColor: "#59f1ff",
   canopySpread: 1.0,
 };
 const DEFAULT_APP_SETTINGS = {
@@ -984,7 +986,7 @@ function ViewPage() {
             cx={CENTER_TARGET.x}
             cy={CENTER_TARGET.y}
             fill="none"
-            stroke={visualSettings.primaryColor}
+            stroke={visualSettings.rayColor || visualSettings.primaryColor}
             strokeWidth="3"
             initial={{ opacity: 0, r: 20 }}
             animate={{ opacity: [0.8, 0.3, 0.8], r: [30, 55, 30] }}
@@ -1344,9 +1346,11 @@ function AdminPage() {
               </select>
             </label>
             {[
-              ["primaryColor", "Primary"],
-              ["secondaryColor", "Secondary"],
-              ["accentColor", "Accent"],
+              ["primaryColor", "Leaf Color 1"],
+              ["secondaryColor", "Leaf Color 2"],
+              ["accentColor", "Leaf Color 3"],
+              ["rayColor", "Ray Color"],
+              ["trunkColor", "Trunk Color"],
             ].map(([key, label]) => (
               <label key={key} className="admin-field">
                 <span>{label}</span>
@@ -1658,6 +1662,8 @@ const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoi
   const primary = visualSettings.primaryColor;
   const secondary = visualSettings.secondaryColor;
   const accent = visualSettings.accentColor;
+  const trunkC = visualSettings.trunkColor || primary;
+  const rayC = visualSettings.rayColor || primary;
 
   return (
     <g>
@@ -1695,12 +1701,12 @@ const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoi
           strokeWidth="4"
         />
       )}
-      <ellipse cx="610" cy="720" rx="260" ry="20" fill={primary} opacity={showRays ? 0.08 : 0} />
+      <ellipse cx="610" cy="720" rx="260" ry="20" fill={trunkC} opacity={showRays ? 0.08 : 0} />
       <g filter="url(#cyan-glow)">
         {[
-          { d: "M582,708 C566,604 578,520 602,440 C626,520 634,604 626,708", stroke: primary, width: 3.2, opacity: 0.82 },
-          { d: "M604,708 C594,612 598,526 606,438 C617,526 622,612 616,708", stroke: accent, width: 2.2, opacity: 0.95 },
-          { d: "M628,708 C662,602 646,520 610,438", stroke: secondary, width: 2.2, opacity: 0.74 },
+          { d: "M582,708 C566,604 578,520 602,440 C626,520 634,604 626,708", stroke: trunkC, width: 3.2, opacity: 0.82 },
+          { d: "M604,708 C594,612 598,526 606,438 C617,526 622,612 616,708", stroke: trunkC, width: 2.2, opacity: 0.95 },
+          { d: "M628,708 C662,602 646,520 610,438", stroke: trunkC, width: 2.2, opacity: 0.74 },
         ].map((line) => {
           const minOp = Math.max(0, line.opacity * (1 - 0.5 * pulseIntensity));
           const maxOp = Math.min(1, line.opacity * (1 + (pulseIntensity - 1) * 0.5));
@@ -1728,7 +1734,7 @@ const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoi
           const sidePull = node.x < neck.x ? -80 : 80;
           const midY = Math.min(500, Math.max(245, node.y + 120));
           const path = `M${root.x},${root.y} C${root.x + sidePull * 0.25},${610 - index % 80} ${neck.x + sidePull},${midY} ${node.x},${node.y}`;
-          const lineColor = getNodeColor(visualSettings, node.id);
+          const lineColor = rayC;
           const baseOp = 0.5;
           const minNode = Math.max(0, baseOp - 0.2 * pulseIntensity);
           const maxNode = Math.min(1, baseOp + 0.2 * pulseIntensity);
