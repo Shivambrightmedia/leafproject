@@ -12,6 +12,7 @@ import {
   update,
 } from "firebase/database";
 import { db, firebaseReady } from "./services/firebase";
+import { arrangeLeavesRadial } from "./utils/layoutEngine";
 import "./styles.css";
 
 const LEAF_COLORS = ["#2f8f46", "#74b84f", "#a7c957"];
@@ -218,94 +219,10 @@ function createTreePlacement(leafItem, index, total, salt = "", shapePoints = []
 }
 
 function createPackedPlacements(leaves, salt = "", shapePoints = []) {
-  const slots = createTreeSlots(leaves.length, shapePoints)
-    .map((slot, index) => ({
-      ...slot,
-      sort: hashText(`${slot.x}-${slot.y}-${salt}`) + index * 17,
-    }))
-    .sort((a, b) => a.sort - b.sort);
-  const used = [];
-
-  const minSquare = LEAF_MIN_DISTANCE * LEAF_MIN_DISTANCE;
-
-  return leaves.map((leafItem, index) => {
-    const preferredIndex = hashText(`${leafItem.id || leafItem.name}-${salt}`) % Math.max(slots.length, 1);
-    let selected = null;
-
-    for (let attempt = 0; attempt < slots.length; attempt += 1) {
-      const slot = slots[(preferredIndex + attempt) % slots.length];
-      let clear = true;
-      for (let i = 0; i < used.length; i++) {
-        const dx = used[i].x - slot.x;
-        const dy = used[i].y - slot.y;
-        if (dx * dx + dy * dy < minSquare) {
-          clear = false;
-          break;
-        }
-      }
-      if (clear) {
-        selected = slot;
-        break;
-      }
-    }
-
-    if (!selected) {
-      const relaxedDistances = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7];
-      for (const multiplier of relaxedDistances) {
-        const relaxedSquare = minSquare * (multiplier * multiplier);
-        for (let attempt = 0; attempt < slots.length; attempt += 1) {
-          const slot = slots[(preferredIndex + attempt) % slots.length];
-          let clear = true;
-          for (let i = 0; i < used.length; i++) {
-            const dx = used[i].x - slot.x;
-            const dy = used[i].y - slot.y;
-            if (dx * dx + dy * dy < relaxedSquare) {
-              clear = false;
-              break;
-            }
-          }
-          if (clear) {
-            selected = slot;
-            break;
-          }
-        }
-        if (selected) break;
-      }
-    }
-
-    if (!selected) {
-      let bestSlot = null;
-      let maxNearestSquare = -1;
-
-      for (let i = 0; i < slots.length; i++) {
-        const slot = slots[i];
-        let nearestSquare = Infinity;
-        for (let j = 0; j < used.length; j++) {
-          const dx = used[j].x - slot.x;
-          const dy = used[j].y - slot.y;
-          const distSq = dx * dx + dy * dy;
-          if (distSq < nearestSquare) nearestSquare = distSq;
-        }
-        if (nearestSquare > maxNearestSquare) {
-          maxNearestSquare = nearestSquare;
-          bestSlot = slot;
-        }
-      }
-      selected = bestSlot || slots[index % slots.length] || CANOPY_CENTER;
-    }
-
-    const jitterX = ((hashText(`${leafItem.id}-x-${salt}`) % 100) - 50) * 0.14;
-    const jitterY = ((hashText(`${leafItem.id}-y-${salt}`) % 100) - 50) * 0.1;
-    const placement = {
-      x: Math.round(Math.min(LEAF_SAFE_BOUNDS.maxX, Math.max(LEAF_SAFE_BOUNDS.minX, selected.x + jitterX))),
-      y: Math.round(Math.min(LEAF_SAFE_BOUNDS.maxY, Math.max(LEAF_SAFE_BOUNDS.minY, selected.y + jitterY))),
-      rotate: (hashText(`${leafItem.id}-${salt}`) % 70) - 35,
-    };
-
-    used.push(placement);
-    return placement;
-  });
+  return arrangeLeavesRadial(leaves, salt);
 }
+
+// Removed the rest of the old createPackedPlacements body
 
 function moveShapePoints(points, dx, dy) {
   return points.map((point) => ({
@@ -1481,16 +1398,15 @@ function arrangeLeaves(leaves, shapePoints = []) {
     const fallback = fallbackPlacements[index] || createTreePlacement(leafItem, index, leaves.length, "", shapePoints);
     const savedX = Number(leafItem.x);
     const savedY = Number(leafItem.y);
-    const savedPositionIsUsable = Number.isFinite(savedX)
-      && Number.isFinite(savedY)
-      && isInsideActiveShape(savedX, savedY, shapePoints, LEAF_BORDER_PADDING);
+    const savedPositionIsUsable = Number.isFinite(savedX) && Number.isFinite(savedY);
+    
     const x = savedPositionIsUsable ? savedX : fallback.x;
     const y = savedPositionIsUsable ? savedY : fallback.y;
 
     return {
       ...leafItem,
-      x: Math.round(Math.min(LEAF_SAFE_BOUNDS.maxX, Math.max(LEAF_SAFE_BOUNDS.minX, x))),
-      y: Math.round(Math.min(LEAF_SAFE_BOUNDS.maxY, Math.max(LEAF_SAFE_BOUNDS.minY, y))),
+      x: Math.round(x),
+      y: Math.round(y),
       rotate: Number.isFinite(Number(leafItem.rotate)) ? Number(leafItem.rotate) : fallback.rotate,
     };
   });
