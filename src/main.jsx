@@ -857,7 +857,14 @@ function ViewPage() {
   const shapePoints = useCanopyShape();
   const visualSettings = useVisualSettings();
   const showSettings = useShowSettings();
+  const appSettings = useAppSettings();
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    if (!appSettings.redirectToView) {
+      window.location.pathname = "/";
+    }
+  }, [appSettings.redirectToView]);
   const [highlightedId, setHighlightedId] = useState(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [imageUrl, setImageUrl] = useState(null);
