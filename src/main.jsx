@@ -878,7 +878,7 @@ function ViewPage() {
   const arrangedLeaves = useMemo(() => arrangeLeaves(leaves, shapePoints, visualSettings.canopySpread), [leaves, shapePoints, visualSettings.canopySpread]);
   const rayLeaves = arrangedLeaves;
 
-  const CENTER_TARGET = { x: 610, y: 280 };
+  const CENTER_TARGET = { x: 610, y: 400 };
 
   const suggestions = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -1715,23 +1715,24 @@ const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoi
           const minOp = Math.max(0, line.opacity * (1 - 0.5 * pulseIntensity));
           const maxOp = Math.min(1, line.opacity * (1 + (pulseIntensity - 1) * 0.5));
           return (
-          <motion.path
-            key={line.d}
-            d={line.d}
-            fill="none"
-            stroke={line.stroke}
-            strokeWidth={line.width}
-            initial={{ pathLength: 0, opacity: 0 }}
-            animate={{ 
-              pathLength: showRays ? 1 : 0, 
-              opacity: showRays ? [minOp, maxOp, minOp] : 0 
-            }}
-            transition={{ 
-              pathLength: { duration: rayDuration, ease: "easeInOut" },
-              opacity: showRays ? { duration: 2, repeat: Infinity, ease: "easeInOut" } : { duration: 0.5 }
-            }}
-          />
-        )})}
+            <motion.path
+              key={line.d}
+              d={line.d}
+              fill="none"
+              stroke={line.stroke}
+              strokeWidth={line.width}
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{
+                pathLength: showRays ? 1 : 0,
+                opacity: showRays ? [minOp, maxOp, minOp] : 0
+              }}
+              transition={{
+                pathLength: { duration: rayDuration, ease: "easeInOut" },
+                opacity: showRays ? { duration: 2, repeat: Infinity, ease: "easeInOut" } : { duration: 0.5 }
+              }}
+            />
+          )
+        })}
       </g>
       <g>
         {nodes.map((node, index) => {
@@ -1751,11 +1752,11 @@ const DigitalTreeSvg = React.memo(function DigitalTreeSvg({ nodes = [], shapePoi
               strokeWidth={index % 5 === 0 ? 2.2 : 1.35}
               strokeOpacity="0.56"
               initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ 
-                pathLength: showRays ? 1 : 0, 
-                opacity: showRays ? [minNode, maxNode, minNode] : 0 
+              animate={{
+                pathLength: showRays ? 1 : 0,
+                opacity: showRays ? [minNode, maxNode, minNode] : 0
               }}
-              transition={{ 
+              transition={{
                 pathLength: { duration: rayDuration, delay: Math.min(index * 0.01, 0.7), ease: "easeInOut" },
                 opacity: showRays ? { duration: 3, delay: Math.min(index * 0.01, 0.7), repeat: Infinity, ease: "easeInOut" } : { duration: 0.5 }
               }}
