@@ -97,7 +97,7 @@ function createLeafPlacement(name, count) {
   };
 }
 
-function createTreeSlots(count, shapePoints = []) {
+function createTreeSlots(count, shapePoints = [], spread = 1.0) {
   const columns = Math.min(118, Math.max(44, Math.ceil(Math.sqrt(Math.max(count, 1)) * 7.2)));
   const rows = Math.max(38, Math.ceil(count / columns) + 52);
   const slots = [];
@@ -109,7 +109,7 @@ function createTreeSlots(count, shapePoints = []) {
       const x = 50 + normalizedX * 1100;
       const y = 30 + normalizedY * 570;
 
-      if (isInsideActiveShape(x, y, shapePoints, LEAF_BORDER_PADDING)) {
+      if (isInsideActiveShape(x, y, shapePoints, LEAF_BORDER_PADDING, spread)) {
         slots.push({
           x,
           y,
@@ -123,10 +123,10 @@ function createTreeSlots(count, shapePoints = []) {
 
 
 
-function isInsideActiveShape(x, y, shapePoints = [], padding = 0) {
+function isInsideActiveShape(x, y, shapePoints = [], padding = 0, spread = 1.0) {
   if (!isInsideLeafSafeArea(x, y)) return false;
   if (shapePoints.length > 2) return isPointSafelyInPolygon({ x, y }, shapePoints, padding);
-  return isInsideCanopyShape(x, y);
+  return isInsideCanopyShape(x, y, spread);
 }
 
 function isInsideLeafSafeArea(x, y) {
@@ -140,11 +140,12 @@ function isInsideLeafSafeArea(x, y) {
   return insideBounds && !trunkBody && !trunkTop;
 }
 
-function isInsideCanopyShape(x, y) {
-  const upperCrown = ((x - 610) / 540) ** 2 + ((y - 280) / 260) ** 2 <= 1;
-  const leftShoulder = ((x - 360) / 300) ** 2 + ((y - 360) / 220) ** 2 <= 1;
-  const rightShoulder = ((x - 860) / 300) ** 2 + ((y - 360) / 220) ** 2 <= 1;
-  const lowerCenter = ((x - 610) / 320) ** 2 + ((y - 450) / 140) ** 2 <= 1;
+function isInsideCanopyShape(x, y, spread = 1.0) {
+  const s = Number(spread) || 1.0;
+  const upperCrown = ((x - 610) / (540 * s)) ** 2 + ((y - 280) / (260 * s)) ** 2 <= 1;
+  const leftShoulder = ((x - 360) / (300 * s)) ** 2 + ((y - 360) / (220 * s)) ** 2 <= 1;
+  const rightShoulder = ((x - 860) / (300 * s)) ** 2 + ((y - 360) / (220 * s)) ** 2 <= 1;
+  const lowerCenter = ((x - 610) / (320 * s)) ** 2 + ((y - 450) / (140 * s)) ** 2 <= 1;
   const trunkGap = x > 535 && x < 685 && y > 455;
 
   return (upperCrown || leftShoulder || rightShoulder || lowerCenter) && !trunkGap;
