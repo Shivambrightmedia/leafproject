@@ -912,9 +912,12 @@ function ViewPage() {
   const CENTER_TARGET = { x: 610, y: 400 };
 
   const suggestions = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const q = searchQuery.trim().toLowerCase().replace(/[\s.,@_]+/g, '');
     if (!q) return [];
-    return arrangedLeaves.filter((l) => l.name?.toLowerCase().includes(q)).slice(0, 8);
+    return arrangedLeaves.filter((l) => {
+      const cleanName = l.name?.toLowerCase().replace(/[\s.,@_]+/g, '') || "";
+      return cleanName.includes(q);
+    }).slice(0, 8);
   }, [searchQuery, arrangedLeaves]);
 
   function selectLeaf(leafItem) {
@@ -931,7 +934,7 @@ function ViewPage() {
 
   function openLeafImage(leafItem) {
     if (!leafItem || leafItem.id !== highlightedId) return;
-    const encodedName = encodeURIComponent(leafItem.name.replace(/\s+/g, '').toLowerCase());
+    const encodedName = encodeURIComponent(leafItem.name.replace(/[\s.,@_]+/g, '').toLowerCase());
     const url = `https://res.cloudinary.com/${CLOUDINARY_CLOUD}/image/upload/${encodedName}`;
     setImageUrl(url);
   }
