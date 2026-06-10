@@ -1565,6 +1565,32 @@ function AdminPage() {
           </label>
         </div>
 
+        <div className="mb-5 overflow-hidden rounded-lg border border-[#c6d49f] bg-white shadow-glow">
+          <div className="px-4 py-3 border-b border-[#dbe4c5] bg-[#f8fbf3]">
+            <h2 className="text-xl font-black">Participants Dashboard (Read-only)</h2>
+          </div>
+          <div className="grid grid-cols-[1fr_1fr_100px] gap-3 border-b border-[#dbe4c5] bg-white px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-[#60704a]">
+            <span>Name</span>
+            <span>WhatsApp Number</span>
+            <span>Consent</span>
+          </div>
+          <div className="max-h-[40vh] overflow-auto">
+            {leaves.map((leafItem) => (
+              <div
+                key={leafItem.id}
+                className="grid grid-cols-[1fr_1fr_100px] items-center gap-3 border-b border-[#eef2df] px-4 py-3 last:border-b-0"
+              >
+                <div className="truncate text-base font-black">{leafItem.name}</div>
+                <div className="truncate text-sm font-semibold text-[#173b27]">{leafItem.phone || "—"}</div>
+                <div className="truncate text-sm font-semibold text-[#173b27]">{leafItem.consent ? "Yes" : "No"}</div>
+              </div>
+            ))}
+            {leaves.length === 0 && (
+              <div className="px-4 py-8 text-center text-sm font-bold text-[#60704a]">No responses yet.</div>
+            )}
+          </div>
+        </div>
+
         <div className="overflow-hidden rounded-lg border border-[#c6d49f] bg-white shadow-glow">
           <div className="grid grid-cols-[1fr_110px_110px] gap-3 border-b border-[#dbe4c5] bg-[#f8fbf3] px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-[#60704a]">
             <span>Name</span>
