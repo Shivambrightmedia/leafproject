@@ -488,6 +488,8 @@ function SubmitPage() {
   const { leaves, status } = useLeaves();
   const appSettings = useAppSettings();
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(() => localStorage.getItem(SUBMISSION_STORAGE_KEY) === "true");
   const [busy, setBusy] = useState(false);
@@ -537,10 +539,14 @@ function SubmitPage() {
       const leafRef = push(ref(db, "leaves"));
       await set(leafRef, {
         name: cleanName,
+        phone,
+        consent,
         createdAt: serverTimestamp(),
         ...placement,
       });
       setName("");
+      setPhone("");
+      setConsent(false);
       localStorage.setItem(SUBMISSION_STORAGE_KEY, "true");
       setSent(true);
     } catch {
@@ -608,8 +614,33 @@ function SubmitPage() {
               <p className="text-sm md:text-base font-semibold text-white leading-snug">
                 Plant my name in this digital forest as a promise to protect our real one.
               </p>
-              {error && <span className="mt-1 block text-xs font-semibold text-[#ff9898]">{error}</span>}
             </div>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3">
+            <input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(event) => {
+                setPhone(event.target.value);
+                setError("");
+              }}
+              className="h-11 w-full md:w-[320px] rounded-md border border-white/30 bg-white px-3 text-base font-semibold text-[#000028] outline-none transition focus:border-[#00e6dc] focus:ring-4 focus:ring-[#00e6dc]/25"
+              placeholder="Enter WhatsApp number"
+            />
+            <label className="flex items-start gap-2 text-sm text-white cursor-pointer">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                className="mt-1 size-4 shrink-0 rounded border-white/30 accent-[#009999]"
+              />
+              <span className="leading-tight">
+                I consent to receive the Tree Plantation Digital Certificate via Email and WhatsApp at the number provided below.
+              </span>
+            </label>
+            {error && <span className="mt-1 block text-xs font-semibold text-[#ff9898]">{error}</span>}
           </div>
           <button
             className="mt-6 flex h-12 w-full md:w-auto md:min-w-[200px] items-center justify-center gap-2 rounded-md bg-[#009999] px-6 text-base font-black text-white transition hover:bg-white hover:text-[#009999] disabled:cursor-not-allowed disabled:opacity-60 md:ml-auto"
