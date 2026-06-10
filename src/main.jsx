@@ -526,6 +526,15 @@ function SubmitPage() {
       setError("Use 20 characters or fewer.");
       return;
     }
+
+    if (consent) {
+      const cleanPhone = phone.replace(/\D/g, "");
+      if (cleanPhone.length !== 10) {
+        setError("Enter 10-digit WhatsApp number to receive certificate.");
+        return;
+      }
+    }
+
     if (!firebaseReady) {
       setError("Firebase config is missing.");
       return;
