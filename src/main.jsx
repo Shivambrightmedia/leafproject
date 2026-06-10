@@ -599,6 +599,31 @@ function SubmitPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="rounded-lg border border-white/20 bg-white/10 p-5 shadow-glow backdrop-blur">
+          <div className="flex flex-col gap-3 mb-6">
+            <input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(event) => {
+                setPhone(event.target.value);
+                setError("");
+              }}
+              className="h-11 w-full md:w-[320px] rounded-md border border-white/30 bg-white px-3 text-base font-semibold text-[#000028] outline-none transition focus:border-[#00e6dc] focus:ring-4 focus:ring-[#00e6dc]/25"
+              placeholder="Enter WhatsApp number"
+            />
+            <label className="flex items-start gap-2 text-sm text-white cursor-pointer">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                className="mt-1 size-4 shrink-0 rounded border-white/30 accent-[#009999]"
+              />
+              <span className="leading-tight">
+                I consent to receive the Tree Plantation Digital Certificate via Email and WhatsApp at the number provided below.
+              </span>
+            </label>
+          </div>
+
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
               <label className="whitespace-nowrap text-xl md:text-2xl font-black text-white shrink-0" htmlFor="name">
@@ -625,32 +650,7 @@ function SubmitPage() {
               </p>
             </div>
           </div>
-
-          <div className="mt-4 flex flex-col gap-3">
-            <input
-              id="phone"
-              type="tel"
-              value={phone}
-              onChange={(event) => {
-                setPhone(event.target.value);
-                setError("");
-              }}
-              className="h-11 w-full md:w-[320px] rounded-md border border-white/30 bg-white px-3 text-base font-semibold text-[#000028] outline-none transition focus:border-[#00e6dc] focus:ring-4 focus:ring-[#00e6dc]/25"
-              placeholder="Enter WhatsApp number"
-            />
-            <label className="flex items-start gap-2 text-sm text-white cursor-pointer">
-              <input
-                type="checkbox"
-                checked={consent}
-                onChange={(e) => setConsent(e.target.checked)}
-                className="mt-1 size-4 shrink-0 rounded border-white/30 accent-[#009999]"
-              />
-              <span className="leading-tight">
-                I consent to receive the Tree Plantation Digital Certificate via Email and WhatsApp at the number provided below.
-              </span>
-            </label>
-            {error && <span className="mt-1 block text-xs font-semibold text-[#ff9898]">{error}</span>}
-          </div>
+          {error && <span className="mt-2 block text-sm font-semibold text-[#ff9898]">{error}</span>}
           <button
             className="mt-6 flex h-12 w-full md:w-auto md:min-w-[200px] items-center justify-center gap-2 rounded-md bg-[#009999] px-6 text-base font-black text-white transition hover:bg-white hover:text-[#009999] disabled:cursor-not-allowed disabled:opacity-60 md:ml-auto"
             type="submit"
