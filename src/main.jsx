@@ -1578,8 +1578,29 @@ function AdminPage() {
         </div>
 
         <div className="mb-5 overflow-hidden rounded-lg border border-[#c6d49f] bg-white shadow-glow">
-          <div className="px-4 py-3 border-b border-[#dbe4c5] bg-[#f8fbf3]">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#dbe4c5] bg-[#f8fbf3]">
             <h2 className="text-xl font-black">Participants Dashboard (Read-only)</h2>
+            <button
+              type="button"
+              onClick={() => {
+                const headers = ["Name", "WhatsApp Number", "Consent"];
+                const csvContent = [
+                  headers.join(","),
+                  ...leaves.map(leaf => `"${(leaf.name || "").replace(/"/g, '""')}","${leaf.phone || ""}","${leaf.consent ? "Yes" : "No"}"`)
+                ].join("\n");
+                const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = "participants.csv";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+              className="admin-button bg-[#173b27] text-white hover:bg-[#22583a] py-1 px-3 text-sm h-auto"
+            >
+              Download Excel
+            </button>
           </div>
           <div className="grid grid-cols-[1fr_1fr_100px] gap-3 border-b border-[#dbe4c5] bg-white px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-[#60704a]">
             <span>Name</span>
